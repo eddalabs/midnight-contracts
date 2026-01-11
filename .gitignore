@@ -60,5 +60,8 @@ jspm_packages/
 # Turbo
 .turbo
 
+# Compact compiler output
+managed/
+
 
 

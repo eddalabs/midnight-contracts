@@ -6,7 +6,8 @@
   "workspaces": [
     "counter-cli",
     "counter-contract",
-    "minting-zswap-contract"    
+    "minting-zswap-contract",
+    "bucket-defi-contract"    
   ],
   "scripts": {
     "compact": "turbo run compact",

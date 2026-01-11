@@ -1,5 +1,5 @@
 // Edda Labs Compact Contracts v0.0.1
-pragma language_version >= 0.17.0;
+pragma language_version >= 0.19.0;
 
 /**
 * @module: AccessControl

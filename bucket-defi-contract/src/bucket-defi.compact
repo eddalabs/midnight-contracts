@@ -1,5 +1,5 @@
 // Edda Labs Compact Contracts v0.0.1
-pragma language_version >= 0.17;
+pragma language_version >= 0.19;
 
 /**
 * @description: The main logic is running here. Modules are used to split the logic.
@@ -59,7 +59,7 @@ export { NonFungibleToken__name,
 
 export { BucketDEFI__zkBucketCounter, BucketDEFI_CONDITIONS, BucketDEFI_STATUS }
 
-export { ZswapCoinPublicKey, ContractAddress, Either, CoinInfo };
+export { ZswapCoinPublicKey, ContractAddress, Either, ShieldedCoinInfo };
 
 ///////////////////////////////////////////////////////////////////////////////
 // PUBLIC STATE TOP LEVEL
@@ -472,7 +472,7 @@ export circuit unpauseToken(): [] {
 * - Wrapper call
 * @return {Bytes<32>} ownerCommitment - The ownercommitment created that represents the bucket ID.
 */
-export circuit createBucket(conditions: BucketDEFI_CONDITIONS, coin: CoinInfo): Bytes<32> {
+export circuit createBucket(conditions: BucketDEFI_CONDITIONS, coin: ShieldedCoinInfo): Bytes<32> {
   assertOwnVerification();
   return BucketDEFI_createBucket(conditions, coin);
 }
@@ -536,8 +536,8 @@ export circuit addCertificateToBucket(ownerCommitment: Bytes<32>, tokenId: Uint<
 */
 export circuit settleBucket(ownerCommitment: Bytes<32>): [] {
   // Check if the caller is either a settler or the owner of the bucket.
-  const isOwner = BucketDEFI__isBucketOwner(ownerCommitment);
-  if (!isOwner) assertOnlyRole(6 as Field as Bytes<32>);
+  const isOwner = BucketDEFI__isBucketOwner(disclose(ownerCommitment));
+  if (!disclose(isOwner)) assertOnlyRole(6 as Field as Bytes<32>);
 
   // Wrapper call
   return BucketDEFI_settleBucket(ownerCommitment);

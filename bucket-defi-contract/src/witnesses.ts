@@ -1,4 +1,4 @@
-import { Ledger } from "./managed/nft-bucket-identity/contract/index.cjs";
+import { Ledger } from "./managed/bucket-defi/contract/index.js";
 import { WitnessContext } from "@midnight-ntwrk/compact-runtime";
 
 // This is how we type an empty object.

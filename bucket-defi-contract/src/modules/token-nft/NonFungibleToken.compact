@@ -1,5 +1,5 @@
 // Edda Labs Compact Contracts v0.0.1
-pragma language_version >= 0.17.0;
+pragma language_version >= 0.19.0;
 
 /**
 * @module: NonFungibleToken
@@ -350,13 +350,13 @@ module NonFungibleToken {
     * @return {[]} - Empty tuple.
     */
   export circuit transferFrom(
-                   from: Either<ZswapCoinPublicKey, ContractAddress>,
+                   from_: Either<ZswapCoinPublicKey, ContractAddress>,
                    to: Either<ZswapCoinPublicKey, ContractAddress>,
                    tokenId: Uint<128>
                    ): [] {
     Initializable_assertInitialized();
     Pausable_assertNotPaused();
-    _transferFrom(from, to, tokenId);
+    _transferFrom(from_, to, tokenId);
   }
 
   /**
@@ -374,13 +374,13 @@ module NonFungibleToken {
     * @param {Uint<128>} tokenId - The token to transfer
     * @return {[]} - Empty tuple.
     */
-  export circuit transfer(from: Either<ZswapCoinPublicKey, ContractAddress>,
+  export circuit transfer(from_: Either<ZswapCoinPublicKey, ContractAddress>,
                           to: Either<ZswapCoinPublicKey, ContractAddress>,
                           tokenId: Uint<128>
                           ): [] {
     Initializable_assertInitialized();
     Pausable_assertNotPaused();
-    _transfer(from, to, tokenId);
+    _transfer(from_, to, tokenId);
   }
 
   /**
@@ -492,7 +492,7 @@ module NonFungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _transferFrom(
-                   from: Either<ZswapCoinPublicKey, ContractAddress>,
+                   from_: Either<ZswapCoinPublicKey, ContractAddress>,
                    to: Either<ZswapCoinPublicKey, ContractAddress>,
                    tokenId: Uint<128>
                    ): [] {
@@ -501,7 +501,7 @@ module NonFungibleToken {
     // (from != 0). Therefore, it is not needed to verify that the return value is not 0 here.
     const auth = left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey());
     const previousOwner = _update(to, tokenId, auth);
-    assert(previousOwner == from, "NonFungibleToken: Incorrect Owner");
+    assert(previousOwner == from_, "NonFungibleToken: Incorrect Owner");
   }
 
   /**
@@ -519,16 +519,16 @@ module NonFungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _transfer(
-                   from: Either<ZswapCoinPublicKey, ContractAddress>,
+                   from_: Either<ZswapCoinPublicKey, ContractAddress>,
                    to: Either<ZswapCoinPublicKey, ContractAddress>,
                    tokenId: Uint<128>
                    ): [] {
     assert(!Utils_isKeyOrAddressZero(to), "NonFungibleToken: Invalid Receiver");
 
-    const previousOwner = _update(to, tokenId, burnAddress());
+    const previousOwner = _update(to, tokenId, shieldedBurnAddress());
 
     assert(!Utils_isKeyOrAddressZero(previousOwner), "NonFungibleToken: Nonexistent Token");
-    assert(previousOwner == from, "NonFungibleToken: Incorrect Owner");
+    assert(previousOwner == from_, "NonFungibleToken: Incorrect Owner");
   }
 
   /**
@@ -546,19 +546,19 @@ module NonFungibleToken {
                   tokenId: Uint<128>,
                   auth: Either<ZswapCoinPublicKey, ContractAddress>
                   ): Either<ZswapCoinPublicKey, ContractAddress> {
-    const from = _ownerOf(tokenId);
+    const from_ = _ownerOf(tokenId);
 
     // Perform (optional) operator check
     if (!Utils_isKeyOrAddressZero(disclose(auth))) {
-      _checkAuthorized(from, auth, tokenId);
+      _checkAuthorized(from_, auth, tokenId);
     }
 
     // Execute the update
-    if (!Utils_isKeyOrAddressZero(disclose(from))) {
+    if (!Utils_isKeyOrAddressZero(disclose(from_))) {
       // Clear approval. No need to re-authorize
-      _approve(burnAddress(), tokenId, burnAddress());
-      const newBalance = _balances.lookup(disclose(from)) - 1 as Uint<128>;
-      _balances.insert(disclose(from), disclose(newBalance));
+      _approve(shieldedBurnAddress(), tokenId, shieldedBurnAddress());
+      const newBalance = _balances.lookup(disclose(from_)) - 1 as Uint<128>;
+      _balances.insert(disclose(from_), disclose(newBalance));
     }
 
     if (!Utils_isKeyOrAddressZero(disclose(to))) {
@@ -571,7 +571,7 @@ module NonFungibleToken {
 
     _owners.insert(disclose(tokenId), disclose(to));
 
-    return from;
+    return from_;
   }
 
   /**
@@ -593,7 +593,7 @@ module NonFungibleToken {
                        ): [] {
     assert(!Utils_isKeyOrAddressZero(to), "NonFungibleToken: Invalid Receiver");
 
-    const previousOwner = _update(to, tokenId, burnAddress());
+    const previousOwner = _update(to, tokenId, shieldedBurnAddress());
 
     _setTokenCertificate(tokenId, tokenCertificate);
 
@@ -611,7 +611,7 @@ module NonFungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _burn(tokenId: Uint<128>): [] {
-    const previousOwner = _update(burnAddress(), tokenId, burnAddress());
+    const previousOwner = _update(shieldedBurnAddress(), tokenId, shieldedBurnAddress());
     assert(!Utils_isKeyOrAddressZero(previousOwner), "NonFungibleToken: Invalid Sender");
   }
 
@@ -695,7 +695,7 @@ module NonFungibleToken {
    */
   export circuit _ownerOf(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
     if (!_owners.member(disclose(tokenId))) {
-      return burnAddress();
+      return shieldedBurnAddress();
     }
 
     return _owners.lookup(disclose(tokenId));
@@ -812,7 +812,7 @@ module NonFungibleToken {
    */
   export circuit _getApproved(tokenId: Uint<128>): Either<ZswapCoinPublicKey, ContractAddress> {
     if (!_tokenApprovals.member(disclose(tokenId))) {
-      return burnAddress();
+      return shieldedBurnAddress();
     }
     return _tokenApprovals.lookup(disclose(tokenId));
   }

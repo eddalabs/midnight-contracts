@@ -1,5 +1,5 @@
 // Edda Labs Compact Contracts v0.0.1
-pragma language_version >= 0.17.0;
+pragma language_version >= 0.19.0;
 
 /**
 * @module: BucketDEFI
@@ -88,10 +88,10 @@ module BucketDEFI {
   * @notice: none
   *
   * @type: {Bytes<32>} ZK Bucket Identity - Hash of owner public key + witness nonce + counter.  
-  * @type: {QualifiedCoinInfo} Pot - Amount of resources available for this bucket
+  * @type: {QualifiedShieldedCoinInfo} Pot - Amount of resources available for this bucket
   * @type: {Map<ZK-Bucket-Identity, POT>} 
   */
-  export ledger _zkBucketDEFIPot: Map<Bytes<32>, QualifiedCoinInfo>;
+  export ledger _zkBucketDEFIPot: Map<Bytes<32>, QualifiedShieldedCoinInfo>;
 
   /**
   * @description: Bucket Commitment tracked with counter
@@ -191,15 +191,15 @@ module BucketDEFI {
    * - Create the bucket with the new owner commitment
    * - Increment the counter
    * @param {CONDITIONS} conditions - The conditions of the bucket.
-   * @param {CoinInfo} coin - The coin the user has to deposit into the contract
+   * @param {ShieldedCoinInfo} coin - The coin the user has to deposit into the contract
    * @return {Bytes<32>} ownerCommitment - The ownercommitment created that represents the bucket ID.
    */
-  export circuit createBucket(conditions: CONDITIONS, coin: CoinInfo): Bytes<32> {
+  export circuit createBucket(conditions: CONDITIONS, coin: ShieldedCoinInfo): Bytes<32> {
     Initializable_assertInitialized();
     Pausable_assertNotPaused();
 
     // The coin is received from ZSwap and check conditions
-    receive(disclose(coin));
+    receiveShielded(disclose(coin));
     assert(coin.value == conditions.pot, "requires to deposit the pot amount");
     assert(coin.color == nativeToken(), "Invalid coin provided");
 
@@ -347,7 +347,7 @@ module BucketDEFI {
 
     // claim the certificate
     const pot = _zkBucketDEFIPot.lookup(disclose(bucket));
-    const send_result = send(pot, owner, disclose(tokenPrice));
+    const send_result = sendShielded(pot, owner, disclose(tokenPrice));
     if (send_result.change.value.value != 0) {
        _zkBucketDEFIPot.insertCoin(
          bucket,
@@ -355,7 +355,7 @@ module BucketDEFI {
          right<ZswapCoinPublicKey, ContractAddress>(kernel.self()));
     }
     else {
-       _zkBucketDEFIPot.insert(disclose(bucket), default<QualifiedCoinInfo>);
+       _zkBucketDEFIPot.insert(disclose(bucket), default<QualifiedShieldedCoinInfo>);
     }
 
     // update the certificate as claimed
@@ -407,7 +407,7 @@ module BucketDEFI {
                                                                 right: ContractAddress { bytes: pad(32, "") } };
     
     // withdraw the leftover
-    const send_result = send(pot, caller, leftovers);
+    const send_result = sendShielded(pot, caller, leftovers);
     if (send_result.change.value.value != 0) {
        _zkBucketDEFIPot.insertCoin(
          disclose(ownerCommitment),
@@ -415,7 +415,7 @@ module BucketDEFI {
          right<ZswapCoinPublicKey, ContractAddress>(kernel.self()));
     }
     else {
-       _zkBucketDEFIPot.insert(disclose(ownerCommitment), default<QualifiedCoinInfo>);
+       _zkBucketDEFIPot.insert(disclose(ownerCommitment), default<QualifiedShieldedCoinInfo>);
     }
 
     // update the bucket as claimed
