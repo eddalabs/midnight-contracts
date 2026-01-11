@@ -17,8 +17,6 @@ function createSimulator() {
   return simulator;
 }
 
-let caller: CoinPublicKey;
-
 describe("Counter smart contract", () => {
   it("Display intial values", () => {
     const simulator = createSimulator();
@@ -26,26 +24,7 @@ describe("Counter smart contract", () => {
     const initialPrivateState = simulator.as("p1").getPrivateState();
     const circuitContext = simulator.as("p1").getCircuitContext();
     expect(initialLedgerState.round).toEqual(0n);
-    expect(initialPrivateState).toEqual({ privateCounter: 0 });
-
-    logger.info({
-      section: "Values",
-      initialLedgerState,
-      initialPrivateState,
-      initialLocalZswap: circuitContext.currentZswapLocalState
-    });
-    logger.info({
-      section: "parameters",
-      costModel: circuitContext.costModel,
-      gasLimit: circuitContext.gasLimit
-    });
-    logger.info({
-      section: "Query context",
-      address: circuitContext.currentQueryContext.address,
-      block: circuitContext.currentQueryContext.block,
-      comIndices: circuitContext.currentQueryContext.comIndices,
-      effects: circuitContext.currentQueryContext.effects
-    });      
+    expect(initialPrivateState).toEqual({ privateCounter: 0 });    
   }); 
 
   it("increments the counter correctly", () => {
