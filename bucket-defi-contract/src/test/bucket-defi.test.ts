@@ -5,16 +5,12 @@ import {
   NonFungibleToken_Location,
   BucketDEFI_CONDITIONS,
   BucketDEFI_STATUS,
-  CoinInfo,
+  ShieldedCoinInfo,
   Simulator
-} from "./simulators/nft-bucket-identity-simulator";
+} from "./simulators/simulator";
 import { describe, it, expect, beforeEach } from "vitest";
-import { randomBytes } from "./utils/utils";
+import { randomBytes, convert_bigint_to_Uint8Array } from "./utils/utils";
 import * as utils from "./utils/utils";
-import {
-  CoinPublicKey,
-  convert_bigint_to_Uint8Array
-} from "@midnight-ntwrk/compact-runtime";
 
 // Users private information
 const adminMaster_privateKey = randomBytes(32);
@@ -114,8 +110,8 @@ const Certificate_2: NonFungibleToken_Certificate = {
 };
 
 // Coins
-const coin1: CoinInfo = utils.coin(100000000);
-const coin2: CoinInfo = utils.coin(100000000);
+const coin1: ShieldedCoinInfo = utils.coin(100000000);
+const coin2: ShieldedCoinInfo = utils.coin(100000000);
 
 // Price
 const Certificate_1_Price = 100000000n;

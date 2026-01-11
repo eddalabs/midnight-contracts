@@ -1,12 +1,10 @@
-import type * as Compact from "../../managed/nft-bucket-identity/contract/index.cjs";
-import { encodeTokenType } from "@midnight-ntwrk/compact-runtime";
-import {nativeToken} from '@midnight-ntwrk/zswap';
-
+import type * as Compact from "../../managed/bucket-defi/contract/index.js";
 import {
-  convert_bigint_to_Uint8Array,
+  encodeRawTokenType,
   encodeCoinPublicKey,
   encodeContractAddress
 } from "@midnight-ntwrk/compact-runtime";
+import * as ledger from '@midnight-ntwrk/ledger-v6';
 
 const PREFIX_ADDRESS = "0200";
 
@@ -48,7 +46,7 @@ export const encodeToPK = (str: string): Compact.ZswapCoinPublicKey => ({
  * @returns Encoded `ZswapCoinPublicKey`.
  */
 export const encodeToAddress = (str: string): Compact.ContractAddress => ({
-  bytes: encodeContractAddress(PREFIX_ADDRESS + toHexPadded(str))
+  bytes: encodeContractAddress(PREFIX_ADDRESS + toHexPadded(str, 60))
 });
 
 /**
@@ -76,23 +74,39 @@ export const createEitherTestContractAddress = (str: string) => ({
 });
 
 /**
+ * @description Converts a bigint to a Uint8Array of specified length.
+ * @param length Desired length of the resulting Uint8Array.
+ * @param value The bigint value to convert.
+ * @returns Uint8Array representation of the bigint.
+ */
+export const convert_bigint_to_Uint8Array = (length: number, value: bigint): Uint8Array => {
+  const result = new Uint8Array(length);
+  let v = value;
+  for (let i = length - 1; i >= 0; i--) {
+    result[i] = Number(v & 0xFFn);
+    v = v >> 8n;
+  }
+  return result;
+};
+
+/**
  * @description Generates an empty Uint8Array of a specific length.
  * @param str String to hexify and encode.
  * @returns Empty Uint8Array of a specific length.
  */
 export const zeroUint8Array = (length = 32) =>
-  convert_bigint_to_Uint8Array(length, 0n);
+  new Uint8Array(length);
 
 
 /**
- * @description Generates a CoinInfo object for testing purposes.
+ * @description Generates a ShieldedCoinInfo object for testing purposes.
  * @param value Value of the coin.
- * @returns CoinInfo object.
+ * @returns ShieldedCoinInfo object.
  */
-export const coin = (value: number): Compact.CoinInfo => {
+export const coin = (value: number): Compact.ShieldedCoinInfo => {
   return {
     nonce: randomBytes(32),
-    color: encodeTokenType(nativeToken()),
+    color: encodeRawTokenType(ledger.shieldedToken().raw),
     value: BigInt(value),
   };
 }

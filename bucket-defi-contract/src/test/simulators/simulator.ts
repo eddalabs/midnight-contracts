@@ -5,8 +5,9 @@ import {
   QueryContext,
   emptyZswapLocalState,
   sampleContractAddress,
-  constructorContext,
-  convert_bigint_to_Uint8Array
+  createConstructorContext,  
+  CostModel,
+  ContractAddress
 } from "@midnight-ntwrk/compact-runtime";
 import {
   Contract,
@@ -15,26 +16,22 @@ import {
   ContractAddress as ContractAddress_,
   ZswapCoinPublicKey as ZswapCoinPublicKey_,
   Either,
-  CoinInfo,
+  ShieldedCoinInfo,
   type NonFungibleToken_Certificate,
   NonFungibleToken_Source,
   NonFungibleToken_Impact,
   NonFungibleToken_Location,
   BucketDEFI_CONDITIONS,
   BucketDEFI_STATUS
-} from "../../managed/nft-bucket-identity/contract/index.cjs";
+} from "../../managed/bucket-defi/contract/index.js";
 import {
   type PrivateState,
   createPrivateState,
   witnesses
 } from "../../witnesses.js";
-import { createLogger } from "../../logger-utils.js";
+import { createLogger } from "../../logger.js";
 import { LogicTestingConfig } from "../../config.js";
-import {
-  ContractAddress,
-  encodeTokenType
-} from "@midnight-ntwrk/onchain-runtime";
-import { adminMaster } from "../nft-bucket-identity.test.js";
+import { adminMaster } from "../bucket-defi.test.js";
 
 export {
   type NonFungibleToken_Certificate,
@@ -43,7 +40,7 @@ export {
   NonFungibleToken_Location,
   type BucketDEFI_CONDITIONS,
   BucketDEFI_STATUS,
-  type CoinInfo
+  type ShieldedCoinInfo
 };
 
 const config = new LogicTestingConfig();
@@ -64,7 +61,7 @@ export class Simulator {
       currentContractState,
       currentZswapLocalState
     } = this.contract.initialState(
-      constructorContext(
+      createConstructorContext(
         { secretNonce: privateState.secretNonce },
         adminMaster
       ),
@@ -74,11 +71,11 @@ export class Simulator {
     this.circuitContext = {
       currentPrivateState,
       currentZswapLocalState,
-      originalState: currentContractState,
-      transactionContext: new QueryContext(
+      currentQueryContext: new QueryContext(
         currentContractState.data,
         this.contractAddress
-      )
+      ),
+      costModel: CostModel.initialCostModel()
     };
     this.userPrivateStates = { ["adminMaster"]: currentPrivateState };
     this.updateUserPrivateState = (newPrivateState: PrivateState) => {};
@@ -124,7 +121,7 @@ export class Simulator {
   }
 
   public getLedger(): Ledger {
-    return ledger(this.circuitContext.transactionContext.state);
+    return ledger(this.circuitContext.currentQueryContext.state);
   }
 
   public getPrivateState(): PrivateState {
@@ -147,15 +144,14 @@ export class Simulator {
       section: "Circuit Context",
       currentPrivateState: circuitResults.context.currentPrivateState,
       currentZswapLocalState: circuitResults.context.currentZswapLocalState,
-      originalState: circuitResults.context.originalState,
-      transactionContext_address:
-        circuitResults.context.transactionContext.address,
-      transactionContext_block: circuitResults.context.transactionContext.block,
-      transactionContext_comIndicies:
-        circuitResults.context.transactionContext.comIndicies,
-      transactionContext_effects:
-        circuitResults.context.transactionContext.effects,
-      transactionContext_state: circuitResults.context.transactionContext.state
+      currentQueryContext_address:
+        circuitResults.context.currentQueryContext.address,
+      currentQueryContext_block: circuitResults.context.currentQueryContext.block,
+      currentQueryContext_comIndices:
+        circuitResults.context.currentQueryContext.comIndices,
+      currentQueryContext_effects:
+        circuitResults.context.currentQueryContext.effects,
+      currentQueryContext_state: circuitResults.context.currentQueryContext.state
     });
     logger.info({
       section: "Circuit Proof Data",
@@ -433,7 +429,7 @@ export class Simulator {
 
   public createBucket(
     conditions: BucketDEFI_CONDITIONS,
-    coin: CoinInfo,
+    coin: ShieldedCoinInfo,
     caller?: CoinPublicKey
   ): Uint8Array {
     // Update the current context to be the result of executing the circuit.
