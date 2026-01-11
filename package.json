@@ -5,7 +5,8 @@
   "type": "module",
   "workspaces": [
     "counter-cli",
-    "counter-contract"    
+    "counter-contract",
+    "minting-zswap-contract"    
   ],
   "scripts": {
     "compact": "turbo run compact",
