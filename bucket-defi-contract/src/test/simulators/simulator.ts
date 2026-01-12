@@ -131,41 +131,6 @@ export class Simulator {
   updateStateAndGetLedger<T>(
     circuitResults: CircuitResults<PrivateState, T>
   ): Ledger {
-    logger.info("");
-    logger.info("");
-    logger.info("");
-    logger.info("");
-    logger.info("");
-    logger.info("");
-    logger.info("");
-    logger.info("");
-    logger.info("");
-    logger.info({
-      section: "Circuit Context",
-      currentPrivateState: circuitResults.context.currentPrivateState,
-      currentZswapLocalState: circuitResults.context.currentZswapLocalState,
-      currentQueryContext_address:
-        circuitResults.context.currentQueryContext.address,
-      currentQueryContext_block: circuitResults.context.currentQueryContext.block,
-      currentQueryContext_comIndices:
-        circuitResults.context.currentQueryContext.comIndices,
-      currentQueryContext_effects:
-        circuitResults.context.currentQueryContext.effects,
-      currentQueryContext_state: circuitResults.context.currentQueryContext.state
-    });
-    logger.info({
-      section: "Circuit Proof Data",
-      input: circuitResults.proofData.input,
-      output: circuitResults.proofData.output,
-      privateTranscriptOutputs:
-        circuitResults.proofData.privateTranscriptOutputs,
-      publicTranscript: circuitResults.proofData.publicTranscript
-    });
-    logger.info({
-      section: "Circuit result",
-      result: circuitResults.result
-    });
-
     this.circuitContext = circuitResults.context;
     this.updateUserPrivateState(circuitResults.context.currentPrivateState);
     return this.getLedger();

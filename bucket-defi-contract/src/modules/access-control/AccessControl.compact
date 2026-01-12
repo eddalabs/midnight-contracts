@@ -89,14 +89,14 @@ module AccessControl {
     _ADMIN_MASTER = default<Bytes<32>>; //This represents 0
     _grantRole(_ADMIN_MASTER, left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey()));
 
-    const minterAdmin_Role = 1 as Field as Bytes<32>;
-    const minter_Role = 2 as Field as Bytes<32>;
-    const matcherAdmin_Role = 3 as Field as Bytes<32>;
-    const matcher_Role = 4 as Field as Bytes<32>;
-    const settlerAdmin_Role = 5 as Field as Bytes<32>;
-    const settler_Role = 6 as Field as Bytes<32>;
-    const verifierAdmin_Role = 7 as Field as Bytes<32>;
-    const verifier_Role = 8 as Field as Bytes<32>;
+    const minterAdmin_Role = 1 as Bytes<32>;
+    const minter_Role = 2 as Bytes<32>;
+    const matcherAdmin_Role = 3 as Bytes<32>;
+    const matcher_Role = 4 as Bytes<32>;
+    const settlerAdmin_Role = 5 as Bytes<32>;
+    const settler_Role = 6 as Bytes<32>;
+    const verifierAdmin_Role = 7 as Bytes<32>;
+    const verifier_Role = 8 as Bytes<32>;   
 
     _adminRoles.insert(minter_Role, minterAdmin_Role);
     _adminRoles.insert(matcher_Role, matcherAdmin_Role);
@@ -110,7 +110,7 @@ module AccessControl {
     _grantRole(minterAdmin_Role, left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey()));
     _grantRole(matcherAdmin_Role, left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey()));
     _grantRole(settlerAdmin_Role, left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey()));
-    _grantRole(verifierAdmin_Role, left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey()));
+    _grantRole(verifierAdmin_Role, left<ZswapCoinPublicKey, ContractAddress>(ownPublicKey()));   
   }
 
   /**
@@ -279,10 +279,11 @@ module AccessControl {
    * @param {Bytes<32>} roleId - The role identifier.
    * @return {Bytes<32>} roleAdmin - The admin role that controls `roleId`.
    */
-  export circuit _getRoleAdmin(roleId: Bytes<32>): Bytes<32> {
+  export circuit _getRoleAdmin(roleId: Bytes<32>): Bytes<32> {        
     if (_adminRoles.member(disclose(roleId))) {
       return _adminRoles.lookup(disclose(roleId));
     }
+    
     return default<Bytes<32>>;
   }
 

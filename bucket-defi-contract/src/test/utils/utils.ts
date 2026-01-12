@@ -2,7 +2,8 @@ import type * as Compact from "../../managed/bucket-defi/contract/index.js";
 import {
   encodeRawTokenType,
   encodeCoinPublicKey,
-  encodeContractAddress
+  encodeContractAddress,
+  convertFieldToBytes
 } from "@midnight-ntwrk/compact-runtime";
 import * as ledger from '@midnight-ntwrk/ledger-v6';
 
@@ -72,22 +73,6 @@ export const createEitherTestContractAddress = (str: string) => ({
   left: encodeToPK(""),
   right: encodeToAddress(str)
 });
-
-/**
- * @description Converts a bigint to a Uint8Array of specified length.
- * @param length Desired length of the resulting Uint8Array.
- * @param value The bigint value to convert.
- * @returns Uint8Array representation of the bigint.
- */
-export const convert_bigint_to_Uint8Array = (length: number, value: bigint): Uint8Array => {
-  const result = new Uint8Array(length);
-  let v = value;
-  for (let i = length - 1; i >= 0; i--) {
-    result[i] = Number(v & 0xFFn);
-    v = v >> 8n;
-  }
-  return result;
-};
 
 /**
  * @description Generates an empty Uint8Array of a specific length.

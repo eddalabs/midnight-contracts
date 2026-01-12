@@ -16,7 +16,7 @@
     }
   },
   "scripts": {
-    "compact": "compact compile +0.27.0 src/bucket-defi.compact src/managed/bucket-defi",
+    "compact": "compact compile --skip-zk +0.27.0 src/bucket-defi.compact src/managed/bucket-defi",
     "test": "vitest run",
     "test:compile": "npm run compact && vitest run",
     "build": "rm -rf dist && tsc --project tsconfig.build.json && cp -Rf ./src/managed ./dist/managed && cp ./src/bucket-defi.compact ./dist",
