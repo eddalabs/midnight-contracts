@@ -39,7 +39,7 @@ import "./modules/bucket-defi/BucketDEFI" prefix BucketDEFI_;
 // PUBLIC STATE FROM MODULES
 ///////////////////////////////////////////////////////////////////////////////
 
-export { AccessControl__operatorRoles, AccessControl__adminRoles, AccessControl__ADMIN_MASTER };
+export { AccessControl__operatorRoles, AccessControl_adminRoles, AccessControl__ADMIN_MASTER };
 
 export { Identity__verifiedUsersforBuckets };
 

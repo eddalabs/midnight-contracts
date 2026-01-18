@@ -12,9 +12,6 @@ import {
   type CoinPublicKey,
   convertFieldToBytes,
 } from '@midnight-ntwrk/compact-runtime';
-import {
-  convert_bigint_to_Uint8Array
-} from '@midnight-ntwrk/compact-runtime-legacy';
 import { describe, it, expect, beforeEach } from "vitest";
 import { randomBytes } from "./utils/utils";
 import * as utils from "./utils/utils";
@@ -160,20 +157,20 @@ function createSimulator() {
 
   const state = simulator.getLedger();
 
-  console.log({admin: state.AccessControl__adminRoles.lookup(minter_ROLE)});
-  console.log({admin: state.AccessControl__adminRoles.lookup(matcher_ROLE)});
-  console.log({admin: state.AccessControl__adminRoles.lookup(settler_ROLE)});
-  console.log({admin: state.AccessControl__adminRoles.lookup(verifier_ROLE)});
+  console.log({admin: state.AccessControl_adminRoles.lookup(minter_ROLE)});
+  console.log({admin: state.AccessControl_adminRoles.lookup(matcher_ROLE)});
+  console.log({admin: state.AccessControl_adminRoles.lookup(settler_ROLE)});
+  console.log({admin: state.AccessControl_adminRoles.lookup(verifier_ROLE)});
 
-  console.log({admin: state.AccessControl__adminRoles.member(minter_ROLE)});
-  console.log({admin: state.AccessControl__adminRoles.member(matcher_ROLE)});
-  console.log({admin: state.AccessControl__adminRoles.member(settler_ROLE)});
-  console.log({admin: state.AccessControl__adminRoles.member(verifier_ROLE)});
+  console.log({admin: state.AccessControl_adminRoles.member(minter_ROLE)});
+  console.log({admin: state.AccessControl_adminRoles.member(matcher_ROLE)});
+  console.log({admin: state.AccessControl_adminRoles.member(settler_ROLE)});
+  console.log({admin: state.AccessControl_adminRoles.member(verifier_ROLE)});
 
   console.log({operator1: state.AccessControl__operatorRoles.lookup(minterAdmin_ROLE).lookup(Account_minterAdmin)});
   console.log({operator2: state.AccessControl__operatorRoles.lookup(matcherAdmin_ROLE).lookup(Account_matcherAdmin)});
   console.log({operator3: state.AccessControl__operatorRoles.lookup(settlerAdmin_ROLE).lookup(Account_settlerAdmin)});
-  console.log({operator4: state.AccessControl__operatorRoles.lookup(verifierAdmin_ROLE).lookup(Account_verifierAdmin)});
+  console.log({operator4: state.AccessControl__operatorRoles.lookup(verifierAdmin_ROLE).lookup(Account_verifierAdmin)});  
 
 
   // the error is that the reading of the AdminRole table is not working in the grantRole function, specially in _getRoleAdmin inner function, even though i have tested in the logs that the admin are being stored correctly. 
