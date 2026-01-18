@@ -27,16 +27,16 @@ const settler_privateKey = randomBytes(32);
 const verifierAdmin_privateKey = randomBytes(32);
 const verifier_privateKey = randomBytes(32);
 
-// Callers
-export const adminMaster = utils.toHexPadded("adminMaster");
-export const minterAdmin = utils.toHexPadded("minterAdmin");
-export const minter = utils.toHexPadded("minter");
-export const matcherAdmin = utils.toHexPadded("matcherAdmin");
-export const matcher = utils.toHexPadded("matcher");
-export const settlerAdmin = utils.toHexPadded("settlerAdmin");
-export const settler = utils.toHexPadded("settler");
-export const verifierAdmin = utils.toHexPadded("verifierAdmin");
-export const verifier = utils.toHexPadded("verifier");
+// Callers - use createCaller to ensure they match the accounts created by createEitherTestUser
+export const adminMaster = utils.createCaller("adminMaster");
+export const minterAdmin = utils.createCaller("minterAdmin");
+export const minter = utils.createCaller("minter");
+export const matcherAdmin = utils.createCaller("matcherAdmin");
+export const matcher = utils.createCaller("matcher");
+export const settlerAdmin = utils.createCaller("settlerAdmin");
+export const settler = utils.createCaller("settler");
+export const verifierAdmin = utils.createCaller("verifierAdmin");
+export const verifier = utils.createCaller("verifier");
 
 // Encoded PK/Addresses Accounts
 const Account_adminMaster = utils.createEitherTestUser("adminMaster");
@@ -170,22 +170,21 @@ function createSimulator() {
   console.log({operator1: state.AccessControl__operatorRoles.lookup(minterAdmin_ROLE).lookup(Account_minterAdmin)});
   console.log({operator2: state.AccessControl__operatorRoles.lookup(matcherAdmin_ROLE).lookup(Account_matcherAdmin)});
   console.log({operator3: state.AccessControl__operatorRoles.lookup(settlerAdmin_ROLE).lookup(Account_settlerAdmin)});
-  console.log({operator4: state.AccessControl__operatorRoles.lookup(verifierAdmin_ROLE).lookup(Account_verifierAdmin)});  
+  console.log({operator4: state.AccessControl__operatorRoles.lookup(verifierAdmin_ROLE).lookup(Account_verifierAdmin)});
 
-
-  // the error is that the reading of the AdminRole table is not working in the grantRole function, specially in _getRoleAdmin inner function, even though i have tested in the logs that the admin are being stored correctly. 
+  // Grant minter role using minterAdmin (who has minterAdmin_ROLE)
   simulator
     .as("minterAdmin")
     .grantRole(minter_ROLE, Account_minter, minterAdmin);
-  // simulator
-  //   .as("matcherAdmin")
-  //   .grantRole(matcher_ROLE, Account_matcher, matcherAdmin);
-  // simulator
-  //   .as("settlerAdmin")
-  //   .grantRole(settler_ROLE, Account_settler, settlerAdmin);
-  // simulator
-  //   .as("verifierAdmin")
-  //   .grantRole(verifier_ROLE, Account_verifier, verifierAdmin);
+  simulator
+    .as("matcherAdmin")
+    .grantRole(matcher_ROLE, Account_matcher, matcherAdmin);
+  simulator
+    .as("settlerAdmin")
+    .grantRole(settler_ROLE, Account_settler, settlerAdmin);
+  simulator
+    .as("verifierAdmin")
+    .grantRole(verifier_ROLE, Account_verifier, verifierAdmin);
 
   return simulator;
 }
@@ -210,495 +209,497 @@ describe("Smart contract Testing", () => {
       });      
     });
 
-  //   it("Confirm the roles using assertOnlyRole", () => {
-  //     simulator.as("adminMaster").assertOnlyRole(adminMaster_ROLE, adminMaster);
-  //     simulator.as("minterAdmin").assertOnlyRole(adminMaster_ROLE, adminMaster);
-  //     simulator.as("minter").assertOnlyRole(adminMaster_ROLE, adminMaster);
-  //     simulator
-  //       .as("matcherAdmin")
-  //       .assertOnlyRole(adminMaster_ROLE, adminMaster);
-  //     simulator.as("matcher").assertOnlyRole(adminMaster_ROLE, adminMaster);
-  //     simulator
-  //       .as("settlerAdmin")
-  //       .assertOnlyRole(adminMaster_ROLE, adminMaster);
-  //     simulator.as("settler").assertOnlyRole(adminMaster_ROLE, adminMaster);
-  //   });
+    it("Confirm the roles using assertOnlyRole", () => {
+      simulator.as("adminMaster").assertOnlyRole(adminMaster_ROLE, adminMaster);
+      simulator.as("minterAdmin").assertOnlyRole(adminMaster_ROLE, adminMaster);
+      simulator.as("minter").assertOnlyRole(adminMaster_ROLE, adminMaster);
+      simulator
+        .as("matcherAdmin")
+        .assertOnlyRole(adminMaster_ROLE, adminMaster);
+      simulator.as("matcher").assertOnlyRole(adminMaster_ROLE, adminMaster);
+      simulator
+        .as("settlerAdmin")
+        .assertOnlyRole(adminMaster_ROLE, adminMaster);
+      simulator.as("settler").assertOnlyRole(adminMaster_ROLE, adminMaster);
+    });
 
-  //   it("Setting Roles Admins should fail if not AdminMaster", () => {
-  //     expect(() => {
-  //       simulator
-  //         .as("minterAdmin")
-  //         .setRoleAdmin(minter_ROLE, minterAdmin_ROLE, minterAdmin);
-  //     }).toThrow();
-  //     expect(() => {
-  //       simulator
-  //         .as("minter")
-  //         .setRoleAdmin(minter_ROLE, minterAdmin_ROLE, minterAdmin);
-  //     }).toThrow();
-  //     expect(() => {
-  //       simulator
-  //         .as("matcherAdmin")
-  //         .setRoleAdmin(matcher_ROLE, matcherAdmin_ROLE, matcherAdmin);
-  //     }).toThrow();
-  //     expect(() => {
-  //       simulator
-  //         .as("matcher")
-  //         .setRoleAdmin(matcher_ROLE, matcherAdmin_ROLE, matcherAdmin);
-  //     }).toThrow();
-  //     expect(() => {
-  //       simulator
-  //         .as("settlerAdmin")
-  //         .setRoleAdmin(settler_ROLE, settlerAdmin_ROLE, settlerAdmin);
-  //     }).toThrow();
-  //     expect(() => {
-  //       simulator
-  //         .as("settler")
-  //         .setRoleAdmin(settler_ROLE, settlerAdmin_ROLE, settlerAdmin);
-  //     }).toThrow();
-  //   });
+    it("Setting Roles Admins should fail if not AdminMaster", () => {
+      expect(() => {
+        simulator
+          .as("minterAdmin")
+          .setRoleAdmin(minter_ROLE, minterAdmin_ROLE, minterAdmin);
+      }).toThrow();
+      expect(() => {
+        simulator
+          .as("minter")
+          .setRoleAdmin(minter_ROLE, minterAdmin_ROLE, minterAdmin);
+      }).toThrow();
+      expect(() => {
+        simulator
+          .as("matcherAdmin")
+          .setRoleAdmin(matcher_ROLE, matcherAdmin_ROLE, matcherAdmin);
+      }).toThrow();
+      expect(() => {
+        simulator
+          .as("matcher")
+          .setRoleAdmin(matcher_ROLE, matcherAdmin_ROLE, matcherAdmin);
+      }).toThrow();
+      expect(() => {
+        simulator
+          .as("settlerAdmin")
+          .setRoleAdmin(settler_ROLE, settlerAdmin_ROLE, settlerAdmin);
+      }).toThrow();
+      expect(() => {
+        simulator
+          .as("settler")
+          .setRoleAdmin(settler_ROLE, settlerAdmin_ROLE, settlerAdmin);
+      }).toThrow();
+    });
 
-  //   it("Setting Roles should fail if not correct Admin", () => {
-  //     expect(() => {
-  //       simulator
-  //         .as("minterAdmin")
-  //         .grantRole(settler_ROLE, Account_settler, minterAdmin);
-  //     }).toThrow();
-  //     expect(() => {
-  //       simulator
-  //         .as("matcherAdmin")
-  //         .grantRole(minter_ROLE, Account_minter, matcherAdmin);
-  //     }).toThrow();
-  //     expect(() => {
-  //       simulator
-  //         .as("settlerAdmin")
-  //         .grantRole(matcher_ROLE, Account_matcher, settlerAdmin);
-  //     }).toThrow();
-  //   });
+    it("Setting Roles should fail if not correct Admin", () => {
+      expect(() => {
+        simulator
+          .as("minterAdmin")
+          .grantRole(settler_ROLE, Account_settler, minterAdmin);
+      }).toThrow();
+      expect(() => {
+        simulator
+          .as("matcherAdmin")
+          .grantRole(minter_ROLE, Account_minter, matcherAdmin);
+      }).toThrow();
+      expect(() => {
+        simulator
+          .as("settlerAdmin")
+          .grantRole(matcher_ROLE, Account_matcher, settlerAdmin);
+      }).toThrow();
+    });
 
-  //   it("Creating a new Admin Master", () => {
-  //     simulator
-  //       .as("adminMaster")
-  //       .grantRole(adminMaster_ROLE, Account_adminMaster2, adminMaster);
-  //     expect(() => {
-  //       simulator
-  //         .as("minterAdmin")
-  //         .grantRole(adminMaster_ROLE, Account_adminMaster2, minterAdmin);
-  //     }).toThrow();
-  //   });
+    it("Creating a new Admin Master", () => {
+      simulator
+        .as("adminMaster")
+        .grantRole(adminMaster_ROLE, Account_adminMaster2, adminMaster);
+      expect(() => {
+        simulator
+          .as("minterAdmin")
+          .grantRole(adminMaster_ROLE, Account_adminMaster2, minterAdmin);
+      }).toThrow();
+    });
 
-  //   it("Pause Access Control", () => {
-  //     simulator.as("adminMaster").pauseAccessControl(adminMaster);
-  //     expect(() => {
-  //       simulator
-  //         .as("adminMaster")
-  //         .setRoleAdmin(minter_ROLE, minterAdmin_ROLE, adminMaster);
-  //     }).toThrow();
-  //     simulator.as("adminMaster").unpauseAccessControl(adminMaster);
-  //     expect(() => {
-  //       simulator.as("adminMaster").unpauseAccessControl(adminMaster);
-  //     }).toThrow();
-  //     expect(() => {
-  //       simulator.as("minterAdmin").pauseAccessControl(minterAdmin);
-  //     }).toThrow();
-  //   });
-  // });
+    it("Pause Access Control", () => {
+      simulator.as("adminMaster").pauseAccessControl(adminMaster);
+      expect(() => {
+        simulator
+          .as("adminMaster")
+          .setRoleAdmin(minter_ROLE, minterAdmin_ROLE, adminMaster);
+      }).toThrow();
+      simulator.as("adminMaster").unpauseAccessControl(adminMaster);
+      expect(() => {
+        simulator.as("adminMaster").unpauseAccessControl(adminMaster);
+      }).toThrow();
+      expect(() => {
+        simulator.as("minterAdmin").pauseAccessControl(minterAdmin);
+      }).toThrow();
+    });
+  });
 
-  // describe("Identity module testing", () => {
-  //   beforeEach(() => {});
+  describe("Identity module testing", () => {
+    beforeEach(() => {});
 
-    // it("Setting User should fail if not verifier", () => {
-    //   expect(() => {
-    //     simulator.as("minterAdmin").setUser(Account_minter.left, minterAdmin);
-    //   }).toThrow();
-    //   expect(() => {
-    //     simulator.as("minter").setUser(Account_minter.left, minter);
-    //   }).toThrow();
-    //   expect(() => {
-    //     simulator.as("matcher").setUser(Account_matcher.left, matcher);
-    //   }).toThrow();
-    //   expect(() => {
-    //     simulator.as("settler").setUser(Account_settler.left, settler);
-    //   }).toThrow();
-    //   simulator.as("verifier").setUser(Account_minter.left, verifier);
-    // });
+    it("Setting User should fail if not verifier", () => {
+      expect(() => {
+        simulator.as("minterAdmin").setUser(Account_minter.left, minterAdmin);
+      }).toThrow();
+      expect(() => {
+        simulator.as("minter").setUser(Account_minter.left, minter);
+      }).toThrow();
+      expect(() => {
+        simulator.as("matcher").setUser(Account_matcher.left, matcher);
+      }).toThrow();
+      expect(() => {
+        simulator.as("settler").setUser(Account_settler.left, settler);
+      }).toThrow();
+      simulator.as("verifier").setUser(Account_minter.left, verifier);
+    });
 
-  //   it("Removing User should fail if not verifier", () => {
-  //     expect(() => {
-  //       simulator
-  //         .as("minterAdmin")
-  //         .removeUser(Account_minter.left, minterAdmin);
-  //     }).toThrow();
-  //     expect(() => {
-  //       simulator.as("minter").removeUser(Account_minter.left, minter);
-  //     }).toThrow();
-  //     expect(() => {
-  //       simulator.as("matcher").removeUser(Account_matcher.left, matcher);
-  //     }).toThrow();
-  //     expect(() => {
-  //       simulator.as("settler").removeUser(Account_settler.left, settler);
-  //     }).toThrow();
-  //     simulator.as("verifier").removeUser(Account_minter.left, verifier);
-  //   });
+    it("Removing User should fail if not verifier", () => {
+      expect(() => {
+        simulator
+          .as("minterAdmin")
+          .removeUser(Account_minter.left, minterAdmin);
+      }).toThrow();
+      expect(() => {
+        simulator.as("minter").removeUser(Account_minter.left, minter);
+      }).toThrow();
+      expect(() => {
+        simulator.as("matcher").removeUser(Account_matcher.left, matcher);
+      }).toThrow();
+      expect(() => {
+        simulator.as("settler").removeUser(Account_settler.left, settler);
+      }).toThrow();
+      simulator.as("verifier").removeUser(Account_minter.left, verifier);
+    });
 
-  //   it("Pause Indentity", () => {
-  //     simulator.as("adminMaster").pauseIdentity(adminMaster);
-  //     expect(() => {
-  //       simulator.as("adminMaster").setUser(Account_minter.left, adminMaster);
-  //     }).toThrow();
-  //     simulator.as("adminMaster").unpauseIdentity(adminMaster);
-  //     expect(() => {
-  //       simulator.as("adminMaster").unpauseIdentity(adminMaster);
-  //     }).toThrow();
-  //     expect(() => {
-  //       simulator.as("minterAdmin").pauseIdentity(minterAdmin);
-  //     }).toThrow();
-  //   });
-  // });
+    it("Pause Indentity", () => {
+      simulator.as("adminMaster").pauseIdentity(adminMaster);
+      expect(() => {
+        simulator.as("adminMaster").setUser(Account_minter.left, adminMaster);
+      }).toThrow();
+      simulator.as("adminMaster").unpauseIdentity(adminMaster);
+      expect(() => {
+        simulator.as("adminMaster").unpauseIdentity(adminMaster);
+      }).toThrow();
+      expect(() => {
+        simulator.as("minterAdmin").pauseIdentity(minterAdmin);
+      }).toThrow();
+    });
+ 
 
-  // describe("Token module testing", () => {
-  //   beforeEach(() => {});
+  describe("Token module testing", () => {
+    beforeEach(() => {});
 
-  //   it("Minting a token and checking status", () => {
-  //     simulator
-  //       .as("minter")
-  //       .mint(
-  //         Account_minter,
-  //         TOKENID_1,
-  //         Certificate_1,
-  //         Certificate_1_Price,
-  //         minter
-  //       );
-  //     expect(() => {
-  //       simulator
-  //         .as("minterAdmin")
-  //         .mint(
-  //           Account_minter,
-  //           TOKENID_1,
-  //           Certificate_1,
-  //           Certificate_1_Price,
-  //           minterAdmin
-  //         );
-  //     }).toThrow();
-  //     expect(() => {
-  //       simulator
-  //         .as("verifier")
-  //         .mint(
-  //           Account_minter,
-  //           TOKENID_1,
-  //           Certificate_1,
-  //           Certificate_1_Price,
-  //           verifier
-  //         );
-  //     }).toThrow();
-  //     expect(() => {
-  //       simulator
-  //         .as("matcher")
-  //         .mint(
-  //           Account_minter,
-  //           TOKENID_1,
-  //           Certificate_1,
-  //           Certificate_1_Price,
-  //           matcher
-  //         );
-  //     }).toThrow();
-  //     expect(() => {
-  //       simulator
-  //         .as("settler")
-  //         .mint(
-  //           Account_minter,
-  //           TOKENID_1,
-  //           Certificate_1,
-  //           Certificate_1_Price,
-  //           settler
-  //         );
-  //     }).toThrow();
+    it("Minting a token and checking status", () => {
+      simulator
+        .as("minter")
+        .mint(
+          Account_minter,
+          TOKENID_1,
+          Certificate_1,
+          Certificate_1_Price,
+          minter
+        );
+      expect(() => {
+        simulator
+          .as("minterAdmin")
+          .mint(
+            Account_minter,
+            TOKENID_1,
+            Certificate_1,
+            Certificate_1_Price,
+            minterAdmin
+          );
+      }).toThrow();
+      expect(() => {
+        simulator
+          .as("verifier")
+          .mint(
+            Account_minter,
+            TOKENID_1,
+            Certificate_1,
+            Certificate_1_Price,
+            verifier
+          );
+      }).toThrow();
+      expect(() => {
+        simulator
+          .as("matcher")
+          .mint(
+            Account_minter,
+            TOKENID_1,
+            Certificate_1,
+            Certificate_1_Price,
+            matcher
+          );
+      }).toThrow();
+      expect(() => {
+        simulator
+          .as("settler")
+          .mint(
+            Account_minter,
+            TOKENID_1,
+            Certificate_1,
+            Certificate_1_Price,
+            settler
+          );
+      }).toThrow();
 
-  //     //checking status
-  //     expect(simulator.as("minter").balanceOf(Account_minter)).toBe(1n);
-  //     expect(() => {
-  //       expect(simulator.as("minter").balanceOf(Account_minter)).toBe(2n);
-  //     }).toThrow();
-  //     expect(simulator.as("minter").ownerOf(TOKENID_1)).toStrictEqual(
-  //       Account_minter
-  //     );
-  //     expect(simulator.as("minter").tokenCertificate(TOKENID_1)).toStrictEqual(
-  //       Certificate_1
-  //     );
-  //     // expect(simulator.as("minter").tokenPrice(TOKENID_1)).toBe(11n);
-  //     // expect(() => {
-  //     //   expect(simulator.as("minter").tokenPrice(TOKENID_1)).toBe(10n);
-  //     // }).toThrow();
+      //checking status
+      expect(simulator.as("minter").balanceOf(Account_minter)).toBe(1n);
+      expect(() => {
+        expect(simulator.as("minter").balanceOf(Account_minter)).toBe(2n);
+      }).toThrow();
+      expect(simulator.as("minter").ownerOf(TOKENID_1)).toStrictEqual(
+        Account_minter
+      );
+      expect(simulator.as("minter").tokenCertificate(TOKENID_1)).toStrictEqual(
+        Certificate_1
+      );
+      // expect(simulator.as("minter").tokenPrice(TOKENID_1)).toBe(11n);
+      // expect(() => {
+      //   expect(simulator.as("minter").tokenPrice(TOKENID_1)).toBe(10n);
+      // }).toThrow();
 
-  //     // Set a price
-  //     simulator.as("minter").setTokenPrice(TOKENID_1, 20n, minter);
-  //     expect(() => {
-  //       simulator.as("settler").setTokenPrice(TOKENID_1, 20n, settler);
-  //     }).toThrow();
-  //   });
+      // Set a price
+      simulator.as("minter").setTokenPrice(TOKENID_1, 20n, minter);
+      expect(() => {
+        simulator.as("settler").setTokenPrice(TOKENID_1, 20n, settler);
+      }).toThrow();
+    });
 
-  //   it("Burning a token and checking status", () => {
-  //     simulator
-  //       .as("minter")
-  //       .mint(
-  //         Account_minter,
-  //         TOKENID_1,
-  //         Certificate_1,
-  //         Certificate_1_Price,
-  //         minter
-  //       );
-  //     expect(() =>
-  //       simulator.as("settler").burn(NON_EXISTENT_TOKEN, settler)
-  //     ).toThrow();
-  //     expect(() => {
-  //       simulator.as("settlerAdmin").burn(TOKENID_1, settlerAdmin);
-  //     }).toThrow();
-  //     expect(() => {
-  //       simulator.as("minter").burn(TOKENID_1, minter);
-  //     }).toThrow();
-  //     expect(() => {
-  //       simulator.as("matcher").burn(TOKENID_1, matcher);
-  //     }).toThrow();
-  //     expect(() => {
-  //       simulator.as("verifier").burn(TOKENID_1, verifier);
-  //     }).toThrow();
-  //     simulator.as("settler").burn(TOKENID_1, settler);
+    it("Burning a token and checking status", () => {
+      simulator
+        .as("minter")
+        .mint(
+          Account_minter,
+          TOKENID_1,
+          Certificate_1,
+          Certificate_1_Price,
+          minter
+        );
+      expect(() =>
+        simulator.as("settler").burn(NON_EXISTENT_TOKEN, settler)
+      ).toThrow();
+      expect(() => {
+        simulator.as("settlerAdmin").burn(TOKENID_1, settlerAdmin);
+      }).toThrow();
+      expect(() => {
+        simulator.as("minter").burn(TOKENID_1, minter);
+      }).toThrow();
+      expect(() => {
+        simulator.as("matcher").burn(TOKENID_1, matcher);
+      }).toThrow();
+      expect(() => {
+        simulator.as("verifier").burn(TOKENID_1, verifier);
+      }).toThrow();
+      simulator.as("settler").burn(TOKENID_1, settler);
 
-  //     //checking status
-  //     expect(simulator.as("minter").balanceOf(Account_minter)).toBe(0n);
-  //     expect(() => {
-  //       expect(simulator.as("minter").balanceOf(Account_minter)).toBe(1n);
-  //     }).toThrow();
-  //     expect(() => {
-  //       expect(simulator.as("minter").ownerOf(TOKENID_1)).toStrictEqual(
-  //         Account_minter
-  //       );
-  //     }).toThrow();
-  //     expect(() => {
-  //       expect(
-  //         simulator.as("minter").tokenCertificate(TOKENID_1)
-  //       ).toStrictEqual(Certificate_1);
-  //     }).toThrow();
-  //   });
-  // });
+      //checking status
+      expect(simulator.as("minter").balanceOf(Account_minter)).toBe(0n);
+      expect(() => {
+        expect(simulator.as("minter").balanceOf(Account_minter)).toBe(1n);
+      }).toThrow();
+      expect(() => {
+        expect(simulator.as("minter").ownerOf(TOKENID_1)).toStrictEqual(
+          Account_minter
+        );
+      }).toThrow();
+      expect(() => {
+        expect(
+          simulator.as("minter").tokenCertificate(TOKENID_1)
+        ).toStrictEqual(Certificate_1);
+      }).toThrow();
+    });
+  });
 
-  // describe("Bucket DEFI module testing", () => {
-  //   beforeEach(() => {});
+  describe("Bucket DEFI module testing", () => {
+    beforeEach(() => {});
 
-  //   it("properly initializes ledger state and private state", () => {
-  //     const initialLedgerState = simulator.as("adminMaster").getLedger();
-  //     expect(initialLedgerState.BucketDEFI__zkBucketCounter).toEqual(0n);
-  //     const initialPrivateState = simulator.as("adminMaster").getPrivateState();
-  //     expect(initialPrivateState).toEqual({
-  //       secretNonce: adminMaster_privateKey
-  //     });
-  //   });
+    it("properly initializes ledger state and private state", () => {
+      const initialLedgerState = simulator.as("adminMaster").getLedger();
+      expect(initialLedgerState.BucketDEFI__zkBucketCounter).toEqual(0n);
+      const initialPrivateState = simulator.as("adminMaster").getPrivateState();
+      expect(initialPrivateState).toEqual({
+        secretNonce: adminMaster_privateKey
+      });
+    });
 
-  //   it("Creating a Bucket and add certificate", () => {
-  //     simulator.as("verifier").setUser(Account_minter.left, verifier);
+    it("Creating a Bucket and add certificate", () => {
+      simulator.as("verifier").setUser(Account_minter.left, verifier);
 
-  //     simulator
-  //       .as("minter")
-  //       .mint(
-  //         Account_minter,
-  //         TOKENID_1,
-  //         Certificate_1,
-  //         Certificate_1_Price,
-  //         minter
-  //       );
-  //       simulator
-  //       .as("minter")
-  //       .mint(
-  //         Account_minter,
-  //         TOKENID_2,
-  //         Certificate_2,
-  //         Certificate_2_Price,
-  //         minter
-  //       );
+      simulator
+        .as("minter")
+        .mint(
+          Account_minter,
+          TOKENID_1,
+          Certificate_1,
+          Certificate_1_Price,
+          minter
+        );
+        simulator
+        .as("minter")
+        .mint(
+          Account_minter,
+          TOKENID_2,
+          Certificate_2,
+          Certificate_2_Price,
+          minter
+        );
 
-  //     const ownerCommitment = simulator
-  //       .as("minter")
-  //       .createBucket(BUCKET1_CONDITIONS, coin1, minter);
-  //     simulator
-  //       .as("minter")
-  //       .addCertificateToBucket(ownerCommitment, TOKENID_1, minter);      
+      const ownerCommitment = simulator
+        .as("minter")
+        .createBucket(BUCKET1_CONDITIONS, coin1, minter);
+      simulator
+        .as("minter")
+        .addCertificateToBucket(ownerCommitment, TOKENID_1, minter);      
 
-  //     const ownerCommitment2 = simulator
-  //       .as("minter")
-  //       .createBucket(BUCKET2_CONDITIONS, coin2, minter);
-  //     simulator
-  //       .as("minter")
-  //       .addCertificateToBucket(ownerCommitment2, TOKENID_2, minter);
-  //   });
+      const ownerCommitment2 = simulator
+        .as("minter")
+        .createBucket(BUCKET2_CONDITIONS, coin2, minter);
+      simulator
+        .as("minter")
+        .addCertificateToBucket(ownerCommitment2, TOKENID_2, minter);
+    });
 
-  //   it("Creating a Bucket, add certificate and settle", () => {
-  //     simulator.as("verifier").setUser(Account_minter.left, verifier);
+    it("Creating a Bucket, add certificate and settle", () => {
+      simulator.as("verifier").setUser(Account_minter.left, verifier);
 
-  //     simulator
-  //       .as("minter")
-  //       .mint(
-  //         Account_minter,
-  //         TOKENID_1,
-  //         Certificate_1,
-  //         Certificate_1_Price,
-  //         minter
-  //       );       
+      simulator
+        .as("minter")
+        .mint(
+          Account_minter,
+          TOKENID_1,
+          Certificate_1,
+          Certificate_1_Price,
+          minter
+        );       
 
-  //     const ownerCommitment = simulator
-  //       .as("minter")
-  //       .createBucket(BUCKET1_CONDITIONS, coin1, minter);
-  //     simulator
-  //       .as("minter")
-  //       .addCertificateToBucket(ownerCommitment, TOKENID_1, minter); 
+      const ownerCommitment = simulator
+        .as("minter")
+        .createBucket(BUCKET1_CONDITIONS, coin1, minter);
+      simulator
+        .as("minter")
+        .addCertificateToBucket(ownerCommitment, TOKENID_1, minter); 
       
-  //     simulator
-  //       .as("minter")
-  //       .settleBucket(ownerCommitment, minter);
-  //   });
+      simulator
+        .as("minter")
+        .settleBucket(ownerCommitment, minter);
+    });
 
-  //    it("Creating a Bucket, add certificate, settle and claim", () => {
-  //     simulator.as("verifier").setUser(Account_minter.left, verifier);
+     it("Creating a Bucket, add certificate, settle and claim", () => {
+      simulator.as("verifier").setUser(Account_minter.left, verifier);
 
-  //     simulator
-  //       .as("minter")
-  //       .mint(
-  //         Account_minter,
-  //         TOKENID_1,
-  //         Certificate_1,
-  //         Certificate_1_Price,
-  //         minter
-  //       );       
+      simulator
+        .as("minter")
+        .mint(
+          Account_minter,
+          TOKENID_1,
+          Certificate_1,
+          Certificate_1_Price,
+          minter
+        );       
 
-  //     const ownerCommitment = simulator
-  //       .as("minter")
-  //       .createBucket(BUCKET1_CONDITIONS, coin1, minter);
-  //     simulator
-  //       .as("minter")
-  //       .addCertificateToBucket(ownerCommitment, TOKENID_1, minter); 
+      const ownerCommitment = simulator
+        .as("minter")
+        .createBucket(BUCKET1_CONDITIONS, coin1, minter);
+      simulator
+        .as("minter")
+        .addCertificateToBucket(ownerCommitment, TOKENID_1, minter); 
       
-  //     simulator
-  //       .as("minter")
-  //       .settleBucket(ownerCommitment, minter);
+      simulator
+        .as("minter")
+        .settleBucket(ownerCommitment, minter);
       
-  //     simulator
-  //       .as("minter")
-  //       .claimCertificateReward(TOKENID_1, minter);      
-  //   });
+      simulator
+        .as("minter")
+        .claimCertificateReward(TOKENID_1, minter);      
+    });
 
-  //   it("Creating a Bucket, add certificate, settle, claim certificate and withdraw leftover", () => {
-  //     simulator.as("verifier").setUser(Account_minter.left, verifier);
+    it("Creating a Bucket, add certificate, settle, claim certificate and withdraw leftover", () => {
+      simulator.as("verifier").setUser(Account_minter.left, verifier);
 
-  //     simulator
-  //       .as("minter")
-  //       .mint(
-  //         Account_minter,
-  //         TOKENID_1,
-  //         Certificate_1,
-  //         Certificate_1_Price,
-  //         minter
-  //       );       
+      simulator
+        .as("minter")
+        .mint(
+          Account_minter,
+          TOKENID_1,
+          Certificate_1,
+          Certificate_1_Price,
+          minter
+        );       
 
-  //     const ownerCommitment = simulator
-  //       .as("minter")
-  //       .createBucket(BUCKET1_CONDITIONS, coin1, minter);
-  //     simulator
-  //       .as("minter")
-  //       .addCertificateToBucket(ownerCommitment, TOKENID_1, minter); 
+      const ownerCommitment = simulator
+        .as("minter")
+        .createBucket(BUCKET1_CONDITIONS, coin1, minter);
+      simulator
+        .as("minter")
+        .addCertificateToBucket(ownerCommitment, TOKENID_1, minter); 
       
-  //     simulator
-  //       .as("minter")
-  //       .settleBucket(ownerCommitment, minter);
+      simulator
+        .as("minter")
+        .settleBucket(ownerCommitment, minter);
       
-  //     simulator
-  //       .as("minter")
-  //       .claimCertificateReward(TOKENID_1, minter);   
+      simulator
+        .as("minter")
+        .claimCertificateReward(TOKENID_1, minter);   
         
-  //     simulator
-  //       .as("minter")
-  //       .withdrawBucketLeftover(ownerCommitment, minter);      
-  //   });
+      simulator
+        .as("minter")
+        .withdrawBucketLeftover(ownerCommitment, minter);      
+    });
 
-  //    it("Creating a Bucket, add certificate, settle, claim certificate, withdraw leftover and proof bucket ownership", () => {
-  //     simulator.as("verifier").setUser(Account_minter.left, verifier);
+     it("Creating a Bucket, add certificate, settle, claim certificate, withdraw leftover and proof bucket ownership", () => {
+      simulator.as("verifier").setUser(Account_minter.left, verifier);
 
-  //     simulator
-  //       .as("minter")
-  //       .mint(
-  //         Account_minter,
-  //         TOKENID_1,
-  //         Certificate_1,
-  //         Certificate_1_Price,
-  //         minter
-  //       );       
+      simulator
+        .as("minter")
+        .mint(
+          Account_minter,
+          TOKENID_1,
+          Certificate_1,
+          Certificate_1_Price,
+          minter
+        );       
 
-  //     const ownerCommitment = simulator
-  //       .as("minter")
-  //       .createBucket(BUCKET1_CONDITIONS, coin1, minter);
-  //     simulator
-  //       .as("minter")
-  //       .addCertificateToBucket(ownerCommitment, TOKENID_1, minter); 
+      const ownerCommitment = simulator
+        .as("minter")
+        .createBucket(BUCKET1_CONDITIONS, coin1, minter);
+      simulator
+        .as("minter")
+        .addCertificateToBucket(ownerCommitment, TOKENID_1, minter); 
       
-  //     simulator
-  //       .as("minter")
-  //       .settleBucket(ownerCommitment, minter);
+      simulator
+        .as("minter")
+        .settleBucket(ownerCommitment, minter);
       
-  //     simulator
-  //       .as("minter")
-  //       .claimCertificateReward(TOKENID_1, minter);   
+      simulator
+        .as("minter")
+        .claimCertificateReward(TOKENID_1, minter);   
         
-  //     simulator
-  //       .as("minter")
-  //       .withdrawBucketLeftover(ownerCommitment, minter); 
+      simulator
+        .as("minter")
+        .withdrawBucketLeftover(ownerCommitment, minter); 
       
-  //     const challenge = utils.randomBytes(32);
-  //     simulator
-  //       .as("minter")
-  //       .proofBucketOwnership(ownerCommitment, challenge, minter);      
-  //   });
+      const challenge = utils.randomBytes(32);
+      simulator
+        .as("minter")
+        .proofBucketOwnership(ownerCommitment, challenge, minter);      
+    });
 
-  //    it("Pause and unpause BucketDEFI", () => {
-  //     simulator.as("adminMaster").pauseBucketDEFI(adminMaster);
-  //     expect(() => {
-  //       simulator.as("minter").createBucket(BUCKET1_CONDITIONS, coin1, minter);
-  //     }).toThrow();
-  //     simulator.as("verifier").setUser(Account_minter.left, verifier);
-  //     simulator.as("adminMaster").unpauseBucketDEFI(adminMaster);
+     it("Pause and unpause BucketDEFI", () => {
+      simulator.as("adminMaster").pauseBucketDEFI(adminMaster);
+      expect(() => {
+        simulator.as("minter").createBucket(BUCKET1_CONDITIONS, coin1, minter);
+      }).toThrow();
+      simulator.as("verifier").setUser(Account_minter.left, verifier);
+      simulator.as("adminMaster").unpauseBucketDEFI(adminMaster);
       
-  //     simulator
-  //       .as("minter")
-  //       .mint(
-  //         Account_minter,
-  //         TOKENID_1,
-  //         Certificate_1,
-  //         Certificate_1_Price,
-  //         minter
-  //       );       
+      simulator
+        .as("minter")
+        .mint(
+          Account_minter,
+          TOKENID_1,
+          Certificate_1,
+          Certificate_1_Price,
+          minter
+        );       
 
-  //     const ownerCommitment = simulator
-  //       .as("minter")
-  //       .createBucket(BUCKET1_CONDITIONS, coin1, minter);
-  //     simulator
-  //       .as("minter")
-  //       .addCertificateToBucket(ownerCommitment, TOKENID_1, minter); 
+      const ownerCommitment = simulator
+        .as("minter")
+        .createBucket(BUCKET1_CONDITIONS, coin1, minter);
+      simulator
+        .as("minter")
+        .addCertificateToBucket(ownerCommitment, TOKENID_1, minter); 
       
-  //     simulator
-  //       .as("minter")
-  //       .settleBucket(ownerCommitment, minter);
+      simulator
+        .as("minter")
+        .settleBucket(ownerCommitment, minter);
       
-  //     simulator
-  //       .as("minter")
-  //       .claimCertificateReward(TOKENID_1, minter);   
+      simulator
+        .as("minter")
+        .claimCertificateReward(TOKENID_1, minter);   
         
-  //     simulator
-  //       .as("minter")
-  //       .withdrawBucketLeftover(ownerCommitment, minter); 
+      simulator
+        .as("minter")
+        .withdrawBucketLeftover(ownerCommitment, minter); 
       
-  //     const challenge = utils.randomBytes(32);
-  //     simulator
-  //       .as("minter")
-  //       .proofBucketOwnership(ownerCommitment, challenge, minter);      
-  //   });
+      const challenge = utils.randomBytes(32);
+      simulator
+        .as("minter")
+        .proofBucketOwnership(ownerCommitment, challenge, minter);      
+    });
   });
 
 });
+});
+
 
 

@@ -1,9 +1,8 @@
 import type * as Compact from "../../managed/bucket-defi/contract/index.js";
 import {
   encodeRawTokenType,
-  encodeCoinPublicKey,
   encodeContractAddress,
-  convertFieldToBytes
+  encodeCoinPublicKey
 } from "@midnight-ntwrk/compact-runtime";
 import * as ledger from '@midnight-ntwrk/ledger-v6';
 
@@ -32,13 +31,31 @@ export const toHexPadded = (str: string, len = 64) =>
   Buffer.from(str, "ascii").toString("hex").padStart(len, "0");
 
 /**
+ * @description Converts a Uint8Array to a hex string
+ * @param bytes Uint8Array to convert
+ * @returns Hex string representation
+ */
+export const bytesToHex = (bytes: Uint8Array): string =>
+  Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+
+/**
  * @description Generates ZswapCoinPublicKey from `str` for testing purposes.
+ *              Uses encodeCoinPublicKey from the library.
  * @param str String to hexify and encode.
  * @returns Encoded `ZswapCoinPublicKey`.
  */
 export const encodeToPK = (str: string): Compact.ZswapCoinPublicKey => ({
   bytes: encodeCoinPublicKey(toHexPadded(str))
 });
+
+/**
+ * @description Creates a caller hex string that matches what encodeToPK produces.
+ *              Use this to create callers that are compatible with accounts created by createEitherTestUser.
+ * @param str String identifier for the caller.
+ * @returns Hex string for use with emptyZswapLocalState.
+ */
+export const createCaller = (str: string): string =>
+  bytesToHex(encodeCoinPublicKey(toHexPadded(str)));
 
 /**
  * @description Generates ContractAddress from `str` for testing purposes.
@@ -53,13 +70,14 @@ export const encodeToAddress = (str: string): Compact.ContractAddress => ({
 /**
  * @description Generates an Either object for ZswapCoinPublicKey for testing.
  *              For use when an Either argument is expected.
+ *              Uses all-zeros for right to match what the circuit's left() wrapper produces.
  * @param str String to hexify and encode.
  * @returns Defined Either object for ZswapCoinPublicKey.
  */
 export const createEitherTestUser = (str: string) => ({
   is_left: true,
   left: encodeToPK(str),
-  right: encodeToAddress("")
+  right: { bytes: new Uint8Array(32) }  // Match circuit's _left_0 which uses all zeros
 });
 
 /**
