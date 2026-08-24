@@ -3,10 +3,10 @@
 A mintable, pausable, ERC-20-shaped token, assembled from audited OpenZeppelin
 parts rather than written from scratch.
 
-This is the first contract in the repo that does not stand alone. Almost none
-of the code below is ours: `FungibleToken`, `Ownable` and `Pausable` come from
-OpenZeppelin's Compact library, vendored into `src/modules/`. What we wrote is
-roughly forty lines of glue, and that glue is the lesson.
+This is the first contract in the repo that does not stand alone. `FungibleToken`,
+`Ownable` and `Pausable` come from OpenZeppelin's Compact library, vendored into
+`src/modules/`. The contract itself is about forty lines that compose them, and
+that composition is the lesson.
 
 If you have read the [counter](../counter-contract/docs.md) and the
 [bulletin board](../bulletin-board-contract/docs.md), you have seen contracts
@@ -142,7 +142,7 @@ take that one.
 
 ## 4. The contract, line by line
 
-Here is our whole contribution. The imports first:
+The imports first:
 
 ```compact
 pragma language_version >= 0.23;
@@ -195,7 +195,7 @@ export circuit mint(
 }
 ```
 
-Two lines, and they are the whole pattern: our policy, then their mechanism.
+Two lines, and they are the whole pattern: the policy, then the mechanism.
 Delete the first line and this contract still compiles, still passes most of its
 tests, and lets anybody in the world mint themselves an unlimited balance.
 
@@ -212,8 +212,8 @@ export circuit transfer(
 ```
 
 Note `FungibleToken_transfer` has a *single* underscore. It is a public circuit
-that guards itself: it checks the caller's balance internally. We add the pause
-check because pausing is our policy, not the token's.
+that guards itself: it checks the caller's balance internally. The pause check
+is added here because pausing is this contract's policy, not the token's.
 
 **The emergency stop, owner only.**
 
@@ -224,10 +224,10 @@ export circuit pause(): [] {
 }
 ```
 
-Only circuits that call `assertNotPaused` are affected by pausing. We applied it
-to `transfer`, `transferFrom` and `approve`, but deliberately not to `mint`.
-There is a test pinning that decision down, because it is a choice, not a
-default.
+Only circuits that call `assertNotPaused` are affected by pausing. It is applied
+here to `transfer`, `transferFrom` and `approve`, but deliberately not to
+`mint`. There is a test pinning that decision down, because it is a choice, not
+a default.
 
 ### Two details inherited from the module
 
@@ -354,8 +354,8 @@ them.
 
 ## 7. Witnesses and private state
 
-A module can demand private state from its host. Both of ours do, and both want
-the same thing: a 32-byte secret.
+A module can demand private state from its host. Both modules here do, and both
+want the same thing: a 32-byte secret.
 
 ```ts
 // src/witnesses.ts
@@ -409,14 +409,14 @@ The 11 tests pin down behaviour that would otherwise be assumption:
 | Test | What it protects |
 |---|---|
 | owner mints, supply moves | the happy path |
-| **non-owner mint reverts** | our `assertOnlyOwner` guard is actually wired up |
+| **non-owner mint reverts** | the `assertOnlyOwner` guard is actually wired up |
 | contract-address recipient reverts | the C2C safety guard |
 | transfer moves balances | the core mechanic |
 | **transfer leaves total supply unchanged** | value is moved, never created |
 | over-balance transfer reverts | the module's own check |
 | paused blocks transfer, unpause restores | the stop actually stops things |
 | non-owner pause reverts | the pause guard |
-| **mint still works while paused** | our deliberate choice to exempt minting |
+| **mint still works while paused** | the deliberate choice to exempt minting |
 | ownership transfer moves the powers | and revokes the old owner |
 
 The bolded ones are the interesting ones: they encode decisions rather than

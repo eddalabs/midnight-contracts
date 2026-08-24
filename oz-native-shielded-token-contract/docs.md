@@ -119,7 +119,7 @@ export circuit mint(
 }
 ```
 
-Same shape as the sibling contract: our policy, their mechanism. Three details
+Same shape as the sibling contract: the policy, then the mechanism. Three details
 in that signature are worth pausing on.
 
 **The recipient is a `ZswapCoinPublicKey`, not an account id.** The balance-Map
@@ -134,9 +134,8 @@ footgun, OpenZeppelin agrees, and ships an optional
 `NativeShieldedTokenDerivedNonce` extension that keeps a counter for you. This
 contract does not compose it, so the caller carries the responsibility.
 
-**`mint` takes `Uint<64>` while `burn` takes `Uint<128>`.** This asymmetry is
-inherited from the module, not something we introduced. It will look like a
-typo the first time you meet it.
+**`mint` takes `Uint<64>` while `burn` takes `Uint<128>`.** This asymmetry comes
+from the module itself. It will look like a typo the first time you meet it.
 
 **Burning.**
 
@@ -190,8 +189,9 @@ Things that are **absent**, each for a reason:
 - **No balances.** Coins are in wallets. The contract has no idea who holds
   what, and neither does anyone reading the chain.
 - **No total supply.** Supply accounting is opt-in upstream via the
-  `NativeShieldedTokenPublicSupply` extension. We deliberately did not compose
-  it, and a test asserts the absence so this document cannot quietly go stale.
+  `NativeShieldedTokenPublicSupply` extension, which this contract deliberately
+  does not compose. A test asserts the absence so this document cannot quietly
+  go stale.
 - **No allowances.** There is nothing to approve. You either hold a coin or you
   do not.
 
@@ -275,7 +275,7 @@ static qualify(coin: ShieldedCoinInfo, mtIndex: bigint = 0n): QualifiedShieldedC
 
 A freshly minted coin is not yet spendable. It becomes spendable once it has a
 Merkle-tree index proving it exists in the ledger's commitment tree. In a real
-transaction that index comes from the chain; in phase-1 tests we set it
+transaction that index comes from the chain; in phase-1 tests it is set
 directly. `shielded-token-contract` documents this same wrinkle at more length.
 
 Caller switching works exactly as in the sibling contract, by swapping the
@@ -297,9 +297,9 @@ expect(() => token.as("alice").mint(...)).toThrow(/not the owner/i);
 | deployment | metadata is sealed, owner recorded, domain stored |
 | **ledger shape** | the state contains *only* a domain and an owner |
 | mint | value and nonce are echoed back; colour is 32 bytes |
-| **colour binding** | every coin carries `tokenColor()`, so only we can mint it |
+| **colour binding** | every coin carries `tokenColor()`, so only this contract can mint it |
 | **colour vs nonce** | colour comes from the domain, not the coin nonce |
-| non-owner mint reverts | our `assertOnlyOwner` guard is wired up |
+| non-owner mint reverts | the `assertOnlyOwner` guard is wired up |
 | burn full / partial | change is `is_some: false` / the remainder |
 | non-owner burn reverts | the guard covers burning too |
 | **no supply totals** | the opt-in gap this document claims is real |
