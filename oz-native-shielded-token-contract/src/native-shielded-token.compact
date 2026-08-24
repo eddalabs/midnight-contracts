@@ -1,0 +1,107 @@
+pragma language_version >= 0.23;
+
+import CompactStandardLibrary;
+
+// The native-coin counterpart to `oz-fungible-token-contract`.
+//
+// There, a transfer moved numbers inside a Map on the contract ledger and
+// nothing existed on chain. Here, `mint` produces a REAL Zswap shielded coin
+// whose `color` is `tokenType(_domain, kernel.self())`. Only this contract can
+// mint coins of that color, and once minted the coin lives in the recipient's
+// wallet, not in this contract's state.
+//
+// As always, OpenZeppelin ships the mechanism ungated: `NativeShieldedToken__mint`
+// and `__burn` carry no access control of their own. The module's own docs say
+// consuming contracts SHOULD gate them. That is what `Ownable_assertOnlyOwner`
+// below is for.
+import "./modules/token/NativeShieldedToken" prefix NativeShieldedToken_;
+import "./modules/access/Ownable" prefix Ownable_;
+
+// Metadata is `sealed`: fixed at construction and never writable again.
+export { NativeShieldedToken__domain };
+export { Ownable__owner };
+
+constructor(
+  domainSep: Bytes<32>,
+  name_: Opaque<"string">,
+  symbol_: Opaque<"string">,
+  decimals_: Uint<8>,
+  initialOwner: Either<Bytes<32>, ContractAddress>
+) {
+  Ownable_initialize(initialOwner);
+  NativeShieldedToken_initialize(domainSep, name_, symbol_, decimals_);
+}
+
+/** Read-only metadata. */
+
+export circuit name(): Opaque<"string"> {
+  return NativeShieldedToken_name();
+}
+
+export circuit symbol(): Opaque<"string"> {
+  return NativeShieldedToken_symbol();
+}
+
+export circuit decimals(): Uint<8> {
+  return NativeShieldedToken_decimals();
+}
+
+/** The coin colour this contract mints: `tokenType(_domain, kernel.self())`. */
+export circuit tokenColor(): Bytes<32> {
+  return NativeShieldedToken_tokenColor();
+}
+
+export circuit owner(): Either<Bytes<32>, ContractAddress> {
+  return Ownable_owner();
+}
+
+/**
+ * Mints a new shielded coin to `recipient`.
+ *
+ * `nonce` is caller-supplied and MUST be unique: reusing one for the same
+ * (value, recipient) produces a duplicate commitment, which the ledger rejects.
+ * With a secret random nonce the mint is recipient-private.
+ *
+ * Note the width asymmetry inherited from the module: minting takes `Uint<64>`
+ * while burning takes `Uint<128>`.
+ */
+export circuit mint(
+  recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+  amount: Uint<64>,
+  nonce: Bytes<32>
+): ShieldedCoinInfo {
+  Ownable_assertOnlyOwner();
+  return NativeShieldedToken__mint(recipient, amount, nonce);
+}
+
+/**
+ * Burns `amount` from a coin supplied within this transaction, refunding any
+ * remainder to `refundTo`. Returns the refund coin when there is one.
+ */
+export circuit burn(
+  coin: ShieldedCoinInfo,
+  amount: Uint<128>,
+  refundTo: Either<ZswapCoinPublicKey, ContractAddress>
+): Maybe<ShieldedCoinInfo> {
+  Ownable_assertOnlyOwner();
+  return NativeShieldedToken__burn(coin, amount, refundTo);
+}
+
+/** Burns from a coin this contract already holds. */
+export circuit burnFromSelf(
+  coin: QualifiedShieldedCoinInfo,
+  amount: Uint<128>
+): Maybe<ShieldedCoinInfo> {
+  Ownable_assertOnlyOwner();
+  return NativeShieldedToken__burnFromSelf(coin, amount);
+}
+
+/** Ownership administration. */
+
+export circuit transferOwnership(newOwner: Either<Bytes<32>, ContractAddress>): [] {
+  Ownable_transferOwnership(newOwner);
+}
+
+export circuit renounceOwnership(): [] {
+  Ownable_renounceOwnership();
+}

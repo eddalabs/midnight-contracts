@@ -7,12 +7,14 @@
     "counter-contract",
     "bulletin-board-contract",
     "unshielded-token-contract",
-    "shielded-token-contract"
+    "shielded-token-contract",
+    "oz-fungible-token-contract",
+    "oz-native-shielded-token-contract"
   ],
   "scripts": {
     "compact": "turbo run compact",
-    "build": "turbo run build",        
-    "lint": "turbo run lint"     
+    "build": "turbo run build",
+    "lint": "turbo run lint"
   },
   "engines": {
     "node": ">=18"
@@ -35,7 +37,7 @@
     "vitest": "^3.2.0"
   },
   "dependencies": {
-    "@midnight-ntwrk/compact-runtime": "0.16.0", 
+    "@midnight-ntwrk/compact-runtime": "0.16.0",
     "@scure/bip39": "^2.0.1",
     "dotenv": "^17.2.3",
     "pino": "9.7.0",
