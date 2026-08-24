@@ -1,17 +1,16 @@
 # OpenZeppelin Fungible Token
 
-A mintable, pausable, ERC-20-shaped token, assembled from audited OpenZeppelin
-parts rather than written from scratch.
+A mintable, pausable, ERC-20-shaped token built from OpenZeppelin's Compact
+modules.
 
-This is the first contract in the repo that does not stand alone. `FungibleToken`,
-`Ownable` and `Pausable` come from OpenZeppelin's Compact library, vendored into
-`src/modules/`. The contract itself is about forty lines that compose them, and
-that composition is the lesson.
+Every other contract in this repo is a single self-contained `.compact` file
+that declares all of its own ledger state and circuits. This one is the first
+built by composition: it imports `FungibleToken`, `Ownable` and `Pausable` from
+`src/modules/` and adds about forty lines wiring them together.
 
-If you have read the [counter](../counter-contract/docs.md) and the
-[bulletin board](../bulletin-board-contract/docs.md), you have seen contracts
-that declare all of their own state. This one is assembled, and learning to
-assemble is how real Compact contracts get built.
+That is the reason to read it. Composing modules is how most real Compact
+contracts get built, and it works differently enough from writing one file that
+it needs its own walkthrough.
 
 ---
 
@@ -302,7 +301,7 @@ pure circuit compute_author_commitment(sk: Bytes<32>): Bytes<32> {
 ```
 
 Same technique, one written by hand for one contract, the other packaged and
-audited for reuse. Seeing your own pattern show up in a library is a good sign
+packaged for reuse. Seeing your own pattern show up in a library is a good sign
 you understood it.
 
 ### Balance-Map versus native coin
@@ -454,8 +453,15 @@ Recompile (`npm run compact-fast`) and re-test after each.
   `src/modules/` are **unmodified copies from
   [OpenZeppelin/compact-contracts](https://github.com/OpenZeppelin/compact-contracts)**,
   pinned at `v0.3.0-alpha.2`, MIT licensed, with their SPDX headers intact.
-  See `src/modules/README.md` for the vendoring policy. That library is
-  explicitly labelled highly experimental by its authors.
+  See `src/modules/README.md` for the vendoring policy.
+- **On "audited".** OpenZeppelin commissioned a full audit of the library in
+  May 2026, and all four modules used here were in its scope. That audit covered
+  **`v0.1.0`**, not the `v0.3.0-alpha.2` vendored here, and these files have
+  changed since (the pragma alone moved from `0.21` to `0.23`). The repository
+  still carries the authors' own warning: *"This repo contains highly
+  experimental code. Expect rapid iteration. Use at your own risk."* Worth
+  internalising generally: an audit is a statement about one commit, not a
+  permanent property of a library.
 - The simulator and phase-1 testing pattern is **adapted from the official
   [`midnightntwrk/example-counter`](https://github.com/midnightntwrk/example-counter)**,
   via this repo's [counter-contract](../counter-contract/docs.md). Its copyright

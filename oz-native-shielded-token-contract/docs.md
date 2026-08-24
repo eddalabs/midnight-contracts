@@ -4,9 +4,9 @@ A token that mints **real coins**, assembled from OpenZeppelin modules.
 
 This is the twin of
 [`oz-fungible-token-contract`](../oz-fungible-token-contract/docs.md). Both are
-called tokens, both come from the same audited library, both use the same
-`Ownable` guard. They are completely different machines, and holding the two
-side by side is the point of having both.
+called tokens, both are built from the same library, both use the same `Ownable`
+guard. They are completely different machines, and holding the two side by side
+is the point of having both.
 
 Read the fungible token first if you have not: it explains what a module is,
 how `prefix` works, and why OpenZeppelin ships every mutator ungated. This
@@ -341,8 +341,15 @@ Recompile (`npm run compact-fast`) and re-test after each.
   modules in `src/modules/` are **unmodified copies from
   [OpenZeppelin/compact-contracts](https://github.com/OpenZeppelin/compact-contracts)**,
   pinned at `v0.3.0-alpha.2`, MIT licensed, SPDX headers intact. See
-  `src/modules/README.md`. That library is labelled highly experimental by its
-  authors.
+  `src/modules/README.md`.
+- **The two native-token modules have never been audited.** OpenZeppelin's May
+  2026 audit covered `v0.1.0`, and `NativeShieldedToken` and
+  `NativeShieldedTokenCore` did not exist in that release; they first appeared
+  in the `v0.3.0-alpha` line. `Ownable` and `Utils` were in the audit's scope,
+  but at `v0.1.0` rather than the version vendored here. The repository carries
+  its authors' warning: *"This repo contains highly experimental code. Expect
+  rapid iteration. Use at your own risk."* Treat this contract as teaching
+  material, not as something to put value behind.
 - Never import both `NativeShieldedToken` and `NativeShieldedTokenFamily` into
   one contract: they wrap the same `Core` and would share one init flag and one
   set of metadata. Use `Family` instead of `NativeShieldedToken` when a single

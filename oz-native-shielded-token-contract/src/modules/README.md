@@ -11,6 +11,19 @@ this workspace compiles with no extra dependency.
 | Upstream path | `contracts/src/<group>/<Module>.compact` |
 | Licence | MIT (headers left intact in every file) |
 | Targets | Compact compiler `0.31.0`, `pragma language_version >= 0.23.0` |
+| Audit status | **not this version.** See below. |
+
+## Audit status
+
+OpenZeppelin commissioned a full audit of the library in May 2026, covering
+`v0.1.0`. The version pinned here is newer and has changed since. Some modules
+in the `v0.3.0-alpha` line, including the native shielded token, did not exist
+at `v0.1.0` and have never been audited at all.
+
+The upstream repository carries its authors' own warning: *"This repo contains
+highly experimental code. Expect rapid iteration. Use at your own risk."*
+
+These workspaces are teaching material. Do not put value behind them.
 
 ## Do not edit these files
 
