@@ -9,7 +9,9 @@ guard. They are completely different machines, and holding the two side by side
 is the point of having both.
 
 Read the fungible token first if you have not: it explains what a module is,
-how `prefix` works, and why OpenZeppelin ships every mutator ungated. This
+how `prefix` works, and why OpenZeppelin ships every `_`-prefixed circuit
+ungated (`transferOwnership` is a mutator that guards itself, so "every
+mutator" would be wrong). This
 document assumes all of that and spends its time on what makes a *coin*
 different from a *balance*.
 
@@ -41,8 +43,11 @@ color = tokenType(_domain, kernel.self())
 
 `_domain` is a 32-byte tag fixed when the contract is deployed, and
 `kernel.self()` is this contract's address. Together they mean **only this
-contract can ever mint coins of this colour**. Nobody can forge your token,
-because forging would require deploying at your address.
+contract can ever mint coins of this colour**. The standard library puts the
+reason precisely: a contract can issue tokens for its own domain separators,
+but "due to collision resistance, it cannot mint tokens for another contract's
+token type". The guarantee rests on the hardness of colliding the derivation,
+not on anything about who may deploy where.
 
 ---
 
@@ -55,12 +60,14 @@ npm install
 # from this workspace
 cd oz-native-shielded-token-contract
 npm run compact      # compile into src/managed/
-npm test             # 12 tests against the in-memory simulator
+npm test             # 16 tests against the in-memory simulator
 ```
 
-Ten circuits, so this compiles noticeably faster than its 17-circuit sibling.
-As always, `npm run compact-fast` skips zero-knowledge key generation while you
-iterate.
+Ten circuits, but expect this to compile *slower* than its 17-circuit sibling
+(roughly 34s versus 19s here). Key generation scales with circuit size, not
+count: `burn` alone is k=16 at 47,656 rows, while the fungible token's largest
+circuit is k=13 at 4,960. `npm run compact-fast` skips key generation entirely
+while you iterate on logic.
 
 ---
 
@@ -93,18 +100,25 @@ constructor(
 }
 ```
 
-The metadata is declared `sealed` inside the module:
+The metadata is declared `sealed`, split across the two modules:
 
 ```compact
+// NativeShieldedToken.compact
 export sealed ledger _domain: Bytes<32>;
+
+// NativeShieldedTokenCore.compact
 export sealed ledger _name: Opaque<"string">;
+export sealed ledger _symbol: Opaque<"string">;
+export sealed ledger _decimals: Uint<8>;
 ```
 
-`sealed` means write-once at construction. There is no circuit anywhere that
-can change the domain, so the coin colour this contract mints is fixed forever
-the moment it is deployed. The module's authors chose this deliberately: an
-earlier design took the domain as a circuit parameter, which let a careless
-caller mint the wrong colour.
+`sealed` means write-once at construction: the language makes a post-construction
+write a *compile-time* error, not a runtime one. So the coin colour this contract
+mints is fixed forever the moment it is deployed. The module states the intent
+plainly: the domain "is stored as `sealed ledger _domain` at construction and
+never exposed as a circuit parameter, eliminating caller-supplied domain misuse".
+(`NativeShieldedTokenCore` and `NativeShieldedTokenFamily` *do* take a domain
+per call, because a family issues several colours from one contract.)
 
 **Minting, owner only.**
 
@@ -130,12 +144,18 @@ Zswap key, because that is what a wallet actually holds.
 (value, recipient) produces a duplicate commitment, and the ledger rejects it.
 With a secret random nonce the mint is *recipient-private*: nobody watching the
 chain can tell who received it. If managing nonces yourself sounds like a
-footgun, OpenZeppelin agrees, and ships an optional
-`NativeShieldedTokenDerivedNonce` extension that keeps a counter for you. This
-contract does not compose it, so the caller carries the responsibility.
+footgun, OpenZeppelin ships an optional `NativeShieldedTokenDerivedNonce`
+extension that keeps a counter for you. Read its trade-off before reaching for
+it: derived nonces are "deterministic and recipient-PUBLIC by design", so you
+buy ergonomics with exactly the privacy the previous paragraph described. This
+contract does not compose it, so the caller carries both the responsibility and
+the privacy.
 
-**`mint` takes `Uint<64>` while `burn` takes `Uint<128>`.** This asymmetry comes
-from the module itself. It will look like a typo the first time you meet it.
+**`mint` takes `Uint<64>` while `burn` takes `Uint<128>`.** It will look like a
+typo the first time you meet it, and it is not the module's decision. Both
+modules are explicit that it is "an asymmetry imposed by the protocol
+primitives, not a module choice": `mintShieldedToken` caps at 64 bits, while
+`sendShielded` accepts 128.
 
 **Burning.**
 
@@ -159,7 +179,14 @@ met it before.
 
 `burnFromSelf` is the variant for coins the contract already holds, which needs
 a `QualifiedShieldedCoinInfo` (a coin plus its Merkle-tree index) rather than a
-bare one.
+bare one. It carries an obligation this contract does not meet, and the gap is
+worth understanding before you copy it. The module says the consumer **should
+persist the returned change coin**, because that change replaces the contract's
+holding and "is not otherwise recoverable". This host returns the change and
+stores nothing. That is harmless *here* only because there is no circuit for
+receiving or holding a coin, so the path is unreachable. Put this contract's
+`burnFromSelf` into something that does hold coins, without adding storage for
+the change, and a partial burn strands the remainder permanently.
 
 ---
 
@@ -190,8 +217,11 @@ Things that are **absent**, each for a reason:
   what, and neither does anyone reading the chain.
 - **No total supply.** Supply accounting is opt-in upstream via the
   `NativeShieldedTokenPublicSupply` extension, which this contract deliberately
-  does not compose. A test asserts the absence so this document cannot quietly
-  go stale.
+  does not compose. The ledger-shape test above asserts the *exhaustive* key
+  set, so composing that extension turns it red and this claim cannot quietly
+  go stale. (Asserting `not.toHaveProperty("_totalSupply")` would not work: the
+  extension's fields are `_totalMinted` and `_totalBurned`, and `totalSupply` is
+  a computed circuit, never a ledger key. Such a test can never fail.)
 - **No allowances.** There is nothing to approve. You either hold a coin or you
   do not.
 
@@ -240,9 +270,16 @@ actually buying, which is the honest way to evaluate any library.
 
 ---
 
-## 6. Witnesses
+## 6. What the compiler generates, and the witness it demands
 
-Only one, and it does not belong to the token:
+`npm run compact` writes `src/managed/native-shielded-token/`, gitignored and
+never committed. Ten circuits under `zkir/` (a full compile writes a `.zkir`
+and a `.bzkir` for each), plus `contract/index.d.ts`
+carrying the `Ledger` type from §4 and a typed method per circuit.
+
+Two things in there are worth opening.
+
+**The `Witnesses` type**, which tells you what private state you owe:
 
 ```ts
 export type Witnesses<PS> = {
@@ -250,15 +287,28 @@ export type Witnesses<PS> = {
 }
 ```
 
-The fungible token needed `wit_FungibleTokenSK` because it had to derive an
-account id to use as a `Map` key. This contract has no map and no accounts, so
-the token module needs no private state at all. The only secret in play is the
-owner's, used by `Ownable` to prove authority.
+Just one, and it does not belong to the token. The fungible token needed
+`wit_FungibleTokenSK` because it had to derive an account id to use as a `Map`
+key. This contract has no map and no accounts, so the token module needs no
+private state at all. The only secret in play is the owner's, used by `Ownable`
+to prove authority.
 
 The usual warning still applies: a witness runs off-chain in the caller's
 wallet, the contract cannot verify it behaves, and supplying a secret key is
 *claiming* the identity it hashes to. Treat `src/witnesses.ts` as
 security-critical.
+
+**The named coin types.** `src/native-shielded-token.compact` re-exports them:
+
+```compact
+export { ShieldedCoinInfo, QualifiedShieldedCoinInfo };
+```
+
+Without that line the compiler inlines the shapes anonymously, no named alias
+reaches the `.d.ts`, and TypeScript callers reach for the identically-named type
+from `@midnight-ntwrk/compact-runtime` instead — whose colour field is `type`,
+not `color`. The code still runs, because the objects are right at runtime; only
+the types lie. `shielded-token-contract` re-exports for the same reason.
 
 ---
 
@@ -290,25 +340,40 @@ expect(() => token.as("alice").mint(...)).toThrow(/not the owner/i);
 
 ## 8. The tests
 
-12 tests, grouped by what they defend:
+16 tests, grouped by what they defend:
 
 | Group | What it pins down |
 |---|---|
-| deployment | metadata is sealed, owner recorded, domain stored |
+| deployment | metadata reads back, owner recorded, domain stored |
 | **ledger shape** | the state contains *only* a domain and an owner |
-| mint | value and nonce are echoed back; colour is 32 bytes |
+| mint | value and nonce are echoed back (catches argument-order bugs) |
 | **colour binding** | every coin carries `tokenColor()`, so only this contract can mint it |
 | **colour vs nonce** | colour comes from the domain, not the coin nonce |
 | non-owner mint reverts | the `assertOnlyOwner` guard is wired up |
 | burn full / partial | change is `is_some: false` / the remainder |
 | non-owner burn reverts | the guard covers burning too |
-| **no supply totals** | the opt-in gap this document claims is real |
+| non-owner `burnFromSelf` reverts | and the third owner-gated circuit too |
+| **no supply totals** | re-asserts the exhaustive key set after a mint |
+| **module-enforced ownership guards** | non-owner `transferOwnership` and `renounceOwnership` both revert |
+| renouncing bricks minting | a permanent, irreversible action, tested because it is easy to call by accident |
 | ownership transfer | minting rights move, old owner loses them |
 
-The bolded rows are the ones teaching the paradigm rather than the mechanics.
-The "no supply totals" test is unusual and worth defending: it asserts an
-*absence*. Documentation claiming a gap tends to rot silently once someone adds
-the missing feature, and a test makes the claim self-checking.
+Two honest limits, because a phase-1 simulator cannot model everything:
+
+**The suite cannot test `sealed`.** The deployment tests read the metadata back,
+which would pass just as well if the fields were ordinary ledger state. Sealing
+is enforced by the *compiler*, so a violation is a build error, not a failing
+test. There is nothing to assert at runtime.
+
+**The burn tests are not physically realistic.** They mint a coin to Alice's key
+and then have the owner burn it, with Alice never taking part. On chain that
+cannot happen: `Core__burn` calls `receiveShielded`, which requires the coin to
+be a genuine Zswap input, so Alice would have to offer it. The in-memory
+simulator does not enforce coin ownership. They still pin the burn *arithmetic*,
+which is what they are for, but do not read them as "the owner can destroy coins
+sitting in wallets". They cannot. This is the same class of simulator fiction
+that [`shielded-token-contract`](../shielded-token-contract/docs.md) documents
+at length for `mt_index`.
 
 ---
 
@@ -316,17 +381,31 @@ the missing feature, and a test makes the claim self-checking.
 
 Recompile (`npm run compact-fast`) and re-test after each.
 
-1. **Break the guard.** Delete `Ownable_assertOnlyOwner()` from `mint`. One
-   test fails; ten still pass. Anyone in the world can now mint your token.
-2. **Reuse a nonce.** Mint twice with the same nonce, value and recipient.
-   Watch the duplicate commitment get rejected, then reason about why that
-   rejection is a safety property rather than an inconvenience.
+1. **Break the guard.** Delete `Ownable_assertOnlyOwner()` from `mint`. **Two**
+   tests fail, not one: the obvious `rejects a non-owner`, and the last
+   assertion of `moves minting rights to the new owner`, which checks that the
+   *old* owner can no longer mint. Fourteen still pass. Anyone in the world can
+   now mint your token.
+2. **Watch a guarantee not be enforced.** Mint twice with the same nonce, value
+   and recipient. Nothing throws, and you get back two coins with identical
+   nonces. On chain the second would be rejected as a duplicate commitment, but
+   that check lives in the ledger, which a phase-1 simulator does not model.
+   Worth doing precisely because it teaches where the harness stops: the safety
+   property is real, your test environment simply cannot see it.
 3. **Change the domain.** Deploy two contracts with different `domainSep` and
-   compare `tokenColor()`. Then try to change a deployed one, and see what
-   `sealed` means in practice.
-4. **Add supply tracking.** Vendor `token/extensions/NativeShieldedTokenPublicSupply`
-   into `src/modules/`, compose it, and watch the "no supply totals" test fail.
-   That failure is the test doing its job.
+   compare `tokenColor()`. They differ, but that alone proves nothing, because
+   `simulator.ts` calls `sampleContractAddress()` and colour is
+   `tokenType(_domain, kernel.self())` — deploy twice with the *same* domain and
+   the colours differ too. To isolate the domain you have to hold the address
+   fixed. Then try changing the domain of a deployed contract, and meet `sealed`
+   as a compile error.
+4. **Add supply tracking.** Vendor **both** `token/extensions/NativeShieldedTokenPublicSupply`
+   and `token/extensions/NativeShieldedTokenPublicSupplyCore` (the first imports
+   the second), compose them, re-export their ledger fields, and wire
+   `Supply__addMinted` into `mint`. The **ledger-shape** tests turn red, because
+   `_totalMinted` and `_totalBurned` join the key set. That is the test doing its
+   job, and it is why §4 asserts an exhaustive key set rather than the absence of
+   a guessed name.
 5. **Add a pause.** Vendor `security/Pausable`, guard `mint` with it, and you
    have rebuilt the sibling contract's shape on the native-coin side.
 6. **Compare honestly.** Open

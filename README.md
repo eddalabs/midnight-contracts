@@ -15,7 +15,7 @@ example (contract + React + wallet), see the separate starter template.
 
 ## Prerequisites
 
-- **Node.js** (v23+) & **npm** (v11+)
+- **Node.js** (v18+; v22 or newer recommended) & **npm**
 - **Compact** developer tools (the `compact` compiler; this repo pins toolchain `+0.31.0`)
 
 You do **not** need Docker, a node, a wallet, or a proof server to run the test
@@ -59,11 +59,14 @@ The two `oz-` contracts add one directory to that pattern:
 src/modules/<group>/*.compact  → vendored OpenZeppelin modules (unmodified copies)
 ```
 
-A **module** is not a contract: it has no constructor, cannot be deployed, and
-cannot be compiled alone. It is a bundle of ledger fields and circuits merged
-into a host contract under a prefix. OpenZeppelin ships every mutator ungated on
-purpose, leaving access control to the contract that imports it, so those two
-workspaces are as much about composition as about tokens.
+A **module** is not a contract: it has no constructor and nothing to deploy.
+It is a bundle of ledger fields and circuits merged into a host contract under a
+prefix. OpenZeppelin ships every `_`-prefixed circuit ungated on purpose,
+leaving access control to the contract that imports it, so those two workspaces
+are as much about composition as about tokens.
+
+The vendored modules under `src/modules/` are unmodified MIT-licensed copies
+pinned at `v0.3.0-alpha.2`; see each workspace's `src/modules/README.md`.
 
 Start with the **Counter** and its [walkthrough](counter-contract/docs.md). It
 is the smallest contract and the `docs.md` template every other guide follows.

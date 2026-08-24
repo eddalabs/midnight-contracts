@@ -21,6 +21,12 @@ import "./modules/access/Ownable" prefix Ownable_;
 export { NativeShieldedToken__domain };
 export { Ownable__owner };
 
+// Re-export the coin types by name. Without this the compiler inlines them
+// anonymously, no named alias reaches the generated .d.ts, and TypeScript
+// callers reach for the identically-named runtime type instead, whose colour
+// field is `type` rather than `color`. `shielded-token-contract` does the same.
+export { ShieldedCoinInfo, QualifiedShieldedCoinInfo };
+
 constructor(
   domainSep: Bytes<32>,
   name_: Opaque<"string">,

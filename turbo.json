@@ -3,18 +3,43 @@
   "ui": "tui",
   "tasks": {
     "compact": {
-      "dependsOn": ["^build"],
-      "outputs": ["src/managed/**", "src/gen/**", "gen/**"]
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "src/managed/**",
+        "src/gen/**",
+        "gen/**"
+      ]
     },
     "build": {
-      "dependsOn": ["^build", "compact"],
-      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
-    },    
+      "dependsOn": [
+        "^build",
+        "compact"
+      ],
+      "outputs": [
+        "dist/**",
+        ".next/**",
+        "!.next/cache/**"
+      ]
+    },
     "test": {
-      "dependsOn": ["compact", "^build"]
-    },  
+      "dependsOn": [
+        "compact",
+        "^build"
+      ]
+    },
     "lint": {
-      "dependsOn": ["compact", "^build"]
-    }  
+      "dependsOn": [
+        "compact",
+        "^build"
+      ]
+    },
+    "typecheck": {
+      "dependsOn": [
+        "compact",
+        "^build"
+      ]
+    }
   }
 }

@@ -43,7 +43,7 @@ beforeEach(() => {
 });
 
 describe("deployment", () => {
-  it("seals the metadata and records the owner", () => {
+  it("exposes the metadata given at construction, and records the owner", () => {
     expect(token.name()).toBe(NAME);
     expect(token.symbol()).toBe(SYMBOL);
     expect(token.decimals()).toBe(DECIMALS);
@@ -62,7 +62,7 @@ describe("deployment", () => {
     ]);
   });
 
-  it("seals the domain separator given at construction", () => {
+  it("stores the domain separator given at construction", () => {
     expect(token.getLedger().NativeShieldedToken__domain).toEqual(domainSep());
   });
 });
@@ -72,10 +72,10 @@ describe("mint (owner only)", () => {
     const nonce = randomBytes(32);
     const coin = token.as("owner").mint(aliceCoinKey, 1_000n, nonce);
 
+    // value and nonce are the real assertions here: they would catch an
+    // argument-order bug. The colour is checked properly in the next test.
     expect(coin.value).toBe(1_000n);
     expect(coin.nonce).toEqual(nonce);
-    expect(coin.color).toBeInstanceOf(Uint8Array);
-    expect(coin.color.length).toBe(32);
   });
 
   it("stamps every coin with this contract's token colour", () => {
@@ -96,7 +96,7 @@ describe("mint (owner only)", () => {
   });
 
   it("rejects a non-owner", () => {
-    // The guard OUR contract adds. NativeShieldedToken__mint is ungated
+    // The guard this contract adds. NativeShieldedToken__mint is ungated
     // upstream; the module's own docs say consumers SHOULD gate it.
     expect(() =>
       token.as("alice").mint(aliceCoinKey, 1_000n, randomBytes(32))
@@ -106,6 +106,9 @@ describe("mint (owner only)", () => {
 
 describe("burn (owner only)", () => {
   it("burns the whole coin, leaving no change", () => {
+    // Limit worth naming: with no supply tracking there is no observable state
+    // to check, so this pins the returned change only. The partial-burn test
+    // below is the stronger one, because 700-500=200 is real arithmetic.
     const coin = token.as("owner").mint(aliceCoinKey, 700n, randomBytes(32));
     const change = token.as("owner").burn(coin, 700n, aliceCoinKey);
 
@@ -132,14 +135,52 @@ describe("burn (owner only)", () => {
 describe("supply accounting", () => {
   it("tracks no totals, by design", () => {
     // Supply accounting is opt-in upstream via the PublicSupply extension,
-    // which this contract deliberately does not compose. Asserting the gap
-    // so the docs' claim stays honest.
+    // which this contract deliberately does not compose. Assert the exhaustive
+    // key set, not the absence of guessed names: composing the extension adds
+    // `_totalMinted` / `_totalBurned`, so a test naming `_totalSupply` (a
+    // computed circuit, never a ledger key) could never fail.
     token.as("owner").mint(aliceCoinKey, 1_000n, randomBytes(32));
 
-    expect(token.getLedger()).not.toHaveProperty("_totalSupply");
-    expect(token.getLedger()).not.toHaveProperty(
-      "NativeShieldedToken__totalSupply"
+    expect(Object.keys(token.getLedger()).sort()).toEqual([
+      "NativeShieldedToken__domain",
+      "Ownable__owner"
+    ]);
+  });
+});
+
+describe("burnFromSelf", () => {
+  it("is owner-gated", () => {
+    const coin = token.as("owner").mint(aliceCoinKey, 100n, randomBytes(32));
+    const qualified = NativeShieldedTokenSimulator.qualify(coin);
+
+    expect(() => token.as("alice").burnFromSelf(qualified, 100n)).toThrow(
+      /not the owner/i
     );
+  });
+});
+
+describe("ownership guards enforced inside the module", () => {
+  it("rejects a non-owner transferring ownership", () => {
+    // The one guard in this contract that is not visible in its own source:
+    // it lives two module circuits deep inside Ownable.
+    expect(() => token.as("alice").transferOwnership(ALICE.either)).toThrow(
+      /not the owner/i
+    );
+  });
+
+  it("rejects a non-owner renouncing ownership", () => {
+    expect(() => token.as("alice").renounceOwnership()).toThrow(
+      /not the owner/i
+    );
+  });
+
+  it("permanently disables minting once ownership is renounced", () => {
+    token.as("owner").renounceOwnership();
+
+    // No secret key can satisfy the zero owner, so the token is frozen for good.
+    expect(() =>
+      token.as("owner").mint(aliceCoinKey, 1n, randomBytes(32))
+    ).toThrow();
   });
 });
 

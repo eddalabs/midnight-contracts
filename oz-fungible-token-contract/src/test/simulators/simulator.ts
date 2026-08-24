@@ -162,7 +162,7 @@ export class FungibleTokenSimulator {
     };
   }
 
-  /** Owner-only. Guarded in our host by `Ownable_assertOnlyOwner`. */
+  /** Owner-only. Guarded here by `Ownable_assertOnlyOwner`. */
   public mint(to: Recipient, value: bigint, sender?: CoinPublicKey): Ledger {
     const results = this.contract.impureCircuits.mint(
       this.contextFor(sender),
@@ -263,6 +263,30 @@ export class FungibleTokenSimulator {
   public totalSupply(sender?: CoinPublicKey): bigint {
     return this.contract.impureCircuits.totalSupply(this.contextFor(sender))
       .result;
+  }
+
+  public allowance(
+    owner_: Recipient,
+    spender: Recipient,
+    sender?: CoinPublicKey
+  ): bigint {
+    return this.contract.impureCircuits.allowance(
+      this.contextFor(sender),
+      owner_,
+      spender
+    ).result;
+  }
+
+  public owner(sender?: CoinPublicKey): Recipient {
+    return this.contract.impureCircuits.owner(this.contextFor(sender)).result;
+  }
+
+  /** Owner-only, enforced in the module. Permanently disables minting. */
+  public renounceOwnership(sender?: CoinPublicKey): Ledger {
+    const results = this.contract.impureCircuits.renounceOwnership(
+      this.contextFor(sender)
+    );
+    return this.updateStateAndGetLedger(results);
   }
 
   public isPaused(sender?: CoinPublicKey): boolean {

@@ -2,16 +2,8 @@ import { createLogger } from "../../logger.js";
 import { LogicTestingConfig } from "../../config.js";
 import { user1 } from "../bulletin-board.test.js";
 
-import {
-  Contract,
-  type Ledger,
-  ledger
-} from "../../managed/bulletin-board/contract/index.js";
-import {
-  type BulletinBoardPrivateState,
-  createPrivateState,
-  witnesses
-} from "../../witnesses.js";
+import { Contract, type Ledger, ledger } from "../../managed/bulletin-board/contract/index.js";
+import { type BulletinBoardPrivateState, createPrivateState, witnesses } from "../../witnesses.js";
 
 import {
   type CircuitContext,
@@ -22,9 +14,8 @@ import {
   CircuitResults,
   CoinPublicKey,
   emptyZswapLocalState,
-  ContractAddress
+  ContractAddress,
 } from "@midnight-ntwrk/compact-runtime";
-import * as utils from "../utils/utils.js";
 
 const config = new LogicTestingConfig();
 export const logger = await createLogger(config.logDir);
@@ -39,27 +30,18 @@ export class BulletinBoardSimulator {
   constructor(privateState: BulletinBoardPrivateState) {
     this.contract = new Contract<BulletinBoardPrivateState>(witnesses);
     this.contractAddress = sampleContractAddress();
-    const {
-      currentPrivateState,
-      currentContractState,
-      currentZswapLocalState
-    } = this.contract.initialState(
-      createConstructorContext(
-        { secretKey: privateState.secretKey },
-        user1
-      )
-    );
+    const { currentPrivateState, currentContractState, currentZswapLocalState } =
+      this.contract.initialState(
+        createConstructorContext({ secretKey: privateState.secretKey }, user1),
+      );
     this.circuitContext = {
       currentPrivateState,
       currentZswapLocalState,
-      currentQueryContext: new QueryContext(
-        currentContractState.data,
-        this.contractAddress
-      ),
-      costModel: CostModel.initialCostModel()
+      currentQueryContext: new QueryContext(currentContractState.data, this.contractAddress),
+      costModel: CostModel.initialCostModel(),
     };
     this.userPrivateStates = { ["user1"]: currentPrivateState };
-    this.updateUserPrivateState = (newPrivateState: BulletinBoardPrivateState) => {};
+    this.updateUserPrivateState = () => {};
   }
 
   static deployContract(secretKey: Uint8Array): BulletinBoardSimulator {
@@ -71,7 +53,7 @@ export class BulletinBoardSimulator {
   }
 
   private buildTurnContext(
-    currentPrivateState: BulletinBoardPrivateState
+    currentPrivateState: BulletinBoardPrivateState,
   ): CircuitContext<BulletinBoardPrivateState> {
     return {
       ...this.circuitContext,
@@ -88,9 +70,7 @@ export class BulletinBoardSimulator {
   as(name: string): BulletinBoardSimulator {
     const ps = this.userPrivateStates[name];
     if (!ps) {
-      throw new Error(
-        `No private state found for user '${name}'. Did you register it?`
-      );
+      throw new Error(`No private state found for user '${name}'. Did you register it?`);
     }
     this.circuitContext = this.buildTurnContext(ps);
     this.updateUserPrivateState = this.updateUserPrivateStateByName(name);
@@ -109,9 +89,7 @@ export class BulletinBoardSimulator {
     return this.circuitContext;
   }
 
-  updateStateAndGetLedger<T>(
-    circuitResults: CircuitResults<BulletinBoardPrivateState, T>
-  ): Ledger {
+  updateStateAndGetLedger<T>(circuitResults: CircuitResults<BulletinBoardPrivateState, T>): Ledger {
     this.circuitContext = circuitResults.context;
     this.updateUserPrivateState(circuitResults.context.currentPrivateState);
     return this.getLedger();
@@ -123,16 +101,16 @@ export class BulletinBoardSimulator {
         ...this.circuitContext,
         currentZswapLocalState: sender
           ? emptyZswapLocalState(sender)
-          : this.circuitContext.currentZswapLocalState
+          : this.circuitContext.currentZswapLocalState,
       },
-      content
+      content,
     );
 
     logger.info("POST NOTE CIRCUIT");
     logger.info({
       section: "Circuit Results",
       gasCost: circuitResults.gasCost,
-      result: circuitResults.result
+      result: circuitResults.result,
     });
 
     return this.updateStateAndGetLedger(circuitResults);
@@ -143,14 +121,14 @@ export class BulletinBoardSimulator {
       ...this.circuitContext,
       currentZswapLocalState: sender
         ? emptyZswapLocalState(sender)
-        : this.circuitContext.currentZswapLocalState
+        : this.circuitContext.currentZswapLocalState,
     });
 
     logger.info("TAKE DOWN CIRCUIT");
     logger.info({
       section: "Circuit Results",
       gasCost: circuitResults.gasCost,
-      result: circuitResults.result
+      result: circuitResults.result,
     });
 
     return this.updateStateAndGetLedger(circuitResults);

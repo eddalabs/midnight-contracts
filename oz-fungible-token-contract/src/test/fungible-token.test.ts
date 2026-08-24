@@ -55,8 +55,8 @@ describe("mint (owner only)", () => {
   });
 
   it("rejects a non-owner", () => {
-    // This is the guard OUR contract adds. FungibleToken__mint is ungated
-    // upstream, so without Ownable_assertOnlyOwner anyone could mint.
+    // The guard this contract adds. FungibleToken__mint is ungated upstream,
+    // so without Ownable_assertOnlyOwner anyone could mint.
     expect(() => token.as("alice").mint(ALICE.either, 1_000n)).toThrow(
       /not the owner/i
     );
@@ -94,7 +94,12 @@ describe("transfer", () => {
   });
 
   it("rejects transferring more than the balance", () => {
-    expect(() => token.as("alice").transfer(BOB.either, 1_001n)).toThrow();
+    // Match the message, not just any throw: the line after the module's
+    // `assert(fromBal >= value)` underflows a Uint<128> and panics on its own,
+    // so a bare toThrow() would stay green even with that assert deleted.
+    expect(() => token.as("alice").transfer(BOB.either, 1_001n)).toThrow(
+      /insufficient balance/i
+    );
   });
 });
 
@@ -126,6 +131,98 @@ describe("pause (owner only)", () => {
 
     const ledger = token.as("owner").mint(BOB.either, 5n);
     expect(ledger.FungibleToken__totalSupply).toBe(1_005n);
+  });
+});
+
+describe("burn (owner only)", () => {
+  beforeEach(() => {
+    token.as("owner").mint(ALICE.either, 1_000n);
+  });
+
+  it("destroys supply and reduces the holder's balance", () => {
+    const ledger = token.as("owner").burn(ALICE.either, 400n);
+
+    expect(ledger.FungibleToken__totalSupply).toBe(600n);
+    expect(token.as("owner").balanceOf(ALICE.either)).toBe(600n);
+  });
+
+  it("lets the owner burn a balance they do not hold", () => {
+    // Worth pinning explicitly, because it is a confiscation power and it is
+    // easy to miss: the module checks only that the target HAS the funds, not
+    // that the caller owns them. Alice loses her balance without consenting.
+    token.as("owner").burn(ALICE.either, 1_000n);
+
+    expect(token.as("owner").balanceOf(ALICE.either)).toBe(0n);
+  });
+
+  it("rejects a non-owner", () => {
+    expect(() => token.as("alice").burn(ALICE.either, 1n)).toThrow(
+      /not the owner/i
+    );
+  });
+
+  it("still works while paused, like mint", () => {
+    token.as("owner").pause();
+
+    const ledger = token.as("owner").burn(ALICE.either, 100n);
+    expect(ledger.FungibleToken__totalSupply).toBe(900n);
+  });
+});
+
+describe("allowances", () => {
+  beforeEach(() => {
+    token.as("owner").mint(ALICE.either, 1_000n);
+  });
+
+  it("lets a spender move someone else's balance once approved", () => {
+    token.as("alice").approve(BOB.either, 300n);
+    expect(token.as("owner").allowance(ALICE.either, BOB.either)).toBe(300n);
+
+    token.as("bob").transferFrom(ALICE.either, BOB.either, 300n);
+
+    expect(token.as("owner").balanceOf(ALICE.either)).toBe(700n);
+    expect(token.as("owner").balanceOf(BOB.either)).toBe(300n);
+    expect(token.as("owner").allowance(ALICE.either, BOB.either)).toBe(0n);
+  });
+
+  it("rejects spending more than the allowance", () => {
+    token.as("alice").approve(BOB.either, 100n);
+
+    expect(() =>
+      token.as("bob").transferFrom(ALICE.either, BOB.either, 101n)
+    ).toThrow(/insufficient allowance/i);
+  });
+
+  it("blocks approve and transferFrom while paused", () => {
+    token.as("alice").approve(BOB.either, 100n);
+    token.as("owner").pause();
+
+    expect(() => token.as("alice").approve(BOB.either, 50n)).toThrow(/paused/i);
+    expect(() =>
+      token.as("bob").transferFrom(ALICE.either, BOB.either, 50n)
+    ).toThrow(/paused/i);
+  });
+});
+
+describe("ownership guards enforced inside the module", () => {
+  it("rejects a non-owner transferring ownership", () => {
+    // The one guard this contract does not apply itself: it lives two module
+    // circuits deep inside Ownable, which makes it the most worth testing.
+    expect(() => token.as("alice").transferOwnership(ALICE.either)).toThrow(
+      /not the owner/i
+    );
+  });
+
+  it("rejects a non-owner renouncing ownership", () => {
+    expect(() => token.as("alice").renounceOwnership()).toThrow(
+      /not the owner/i
+    );
+  });
+
+  it("permanently disables minting once ownership is renounced", () => {
+    token.as("owner").renounceOwnership();
+
+    expect(() => token.as("owner").mint(BOB.either, 1n)).toThrow();
   });
 });
 

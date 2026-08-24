@@ -32,13 +32,21 @@ describe("Shielded token circuits", () => {
 
   it("receives an incoming shielded coin", () => {
     const sim = ShieldedTokenSimulator.deploy();
-    const coin = sim.mintShieldedToSelf(domainSep(), 500n, utils.randomBytes(32));
+    const coin = sim.mintShieldedToSelf(
+      domainSep(),
+      500n,
+      utils.randomBytes(32)
+    );
     expect(() => sim.receiveShieldedTokens(coin)).not.toThrow();
   });
 
   it("sends the full coin value, leaving no change", () => {
     const sim = ShieldedTokenSimulator.deploy();
-    const coin = sim.mintShieldedToSelf(domainSep(), 700n, utils.randomBytes(32));
+    const coin = sim.mintShieldedToSelf(
+      domainSep(),
+      700n,
+      utils.randomBytes(32)
+    );
     const qualified = ShieldedTokenSimulator.qualify(coin);
     const result = sim.sendShieldedToUser(qualified, alice, 700n);
 
@@ -48,7 +56,11 @@ describe("Shielded token circuits", () => {
 
   it("sends part of a coin and returns the remainder as change", () => {
     const sim = ShieldedTokenSimulator.deploy();
-    const coin = sim.mintShieldedToSelf(domainSep(), 700n, utils.randomBytes(32));
+    const coin = sim.mintShieldedToSelf(
+      domainSep(),
+      700n,
+      utils.randomBytes(32)
+    );
     const qualified = ShieldedTokenSimulator.qualify(coin);
     const result = sim.sendShieldedToUser(qualified, alice, 500n);
 
@@ -56,12 +68,22 @@ describe("Shielded token circuits", () => {
     expect(result.change.is_some).toEqual(true);
     expect(result.change.value.value).toEqual(200n);
 
-    logger.info({ section: "send with change", sent: result.sent.value, change: result.change.value.value });
+    logger.info({
+      section: "send with change",
+      sent: result.sent.value,
+      change: result.change.value.value
+    });
   });
 
   it("mints and sends in one circuit", () => {
     const sim = ShieldedTokenSimulator.deploy();
-    const result = sim.mintAndSendShielded(domainSep(), 900n, utils.randomBytes(32), alice, 900n);
+    const result = sim.mintAndSendShielded(
+      domainSep(),
+      900n,
+      utils.randomBytes(32),
+      alice,
+      900n
+    );
     expect(result.sent.value).toEqual(900n);
   });
 });

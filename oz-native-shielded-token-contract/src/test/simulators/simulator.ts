@@ -7,6 +7,8 @@ import { LogicTestingConfig } from "../../config.js";
 import {
   Contract,
   type Ledger,
+  type ShieldedCoinInfo,
+  type QualifiedShieldedCoinInfo,
   ledger
 } from "../../managed/native-shielded-token/contract/index.js";
 import {
@@ -22,9 +24,7 @@ import {
   createConstructorContext,
   CostModel,
   type CoinPublicKey,
-  type ContractAddress,
-  type ShieldedCoinInfo,
-  type QualifiedShieldedCoinInfo
+  type ContractAddress
 } from "@midnight-ntwrk/compact-runtime";
 
 const config = new LogicTestingConfig();
@@ -48,6 +48,7 @@ export class NativeShieldedTokenSimulator {
   readonly contract: Contract<NativeShieldedTokenPrivateState>;
   circuitContext: CircuitContext<NativeShieldedTokenPrivateState>;
   userPrivateStates: Record<string, NativeShieldedTokenPrivateState>;
+  updateUserPrivateState: (ps: NativeShieldedTokenPrivateState) => void;
   contractAddress: ContractAddress;
 
   constructor(
@@ -83,6 +84,7 @@ export class NativeShieldedTokenSimulator {
       costModel: CostModel.initialCostModel()
     };
     this.userPrivateStates = { deployer: currentPrivateState };
+    this.updateUserPrivateState = () => {};
   }
 
   static deploy(args: {
@@ -109,6 +111,12 @@ export class NativeShieldedTokenSimulator {
     this.userPrivateStates[name] = createPrivateState(secretKey);
   }
 
+  private updateUserPrivateStateByName =
+    (name: string) =>
+    (ps: NativeShieldedTokenPrivateState): void => {
+      this.userPrivateStates[name] = ps;
+    };
+
   /** Switches the acting caller; identity is the secret key in private state. */
   as(name: string): NativeShieldedTokenSimulator {
     const ps = this.userPrivateStates[name];
@@ -118,7 +126,18 @@ export class NativeShieldedTokenSimulator {
       );
     }
     this.circuitContext = { ...this.circuitContext, currentPrivateState: ps };
+    this.updateUserPrivateState = this.updateUserPrivateStateByName(name);
     return this;
+  }
+
+  /** Threads the new context back, and the caller's private state with it. */
+  private commit<T>(res: {
+    context: CircuitContext<NativeShieldedTokenPrivateState>;
+    result: T;
+  }): T {
+    this.circuitContext = res.context;
+    this.updateUserPrivateState(res.context.currentPrivateState);
+    return res.result;
   }
 
   public getLedger(): Ledger {
@@ -137,58 +156,87 @@ export class NativeShieldedTokenSimulator {
       amount,
       nonce
     );
-    this.circuitContext = res.context;
     logger.info({ section: "mint", gasCost: res.gasCost });
-    return res.result;
+    return this.commit(res);
   }
 
   /** Owner-only. Returns the change coin, if any. */
-  public burn(
-    coin: ShieldedCoinInfo,
-    amount: bigint,
-    refundTo: CoinRecipient
-  ) {
+  public burn(coin: ShieldedCoinInfo, amount: bigint, refundTo: CoinRecipient) {
     const res = this.contract.impureCircuits.burn(
       this.circuitContext,
       coin,
       amount,
       refundTo
     );
-    this.circuitContext = res.context;
-    return res.result;
+    return this.commit(res);
+  }
+
+  /**
+   * Owner-only. Burns from a coin the contract already holds.
+   *
+   * NOTE: the module states the consumer SHOULD persist the returned change
+   * coin, because it replaces the contract's holding and is not otherwise
+   * recoverable. This contract has no circuit for receiving or holding a coin,
+   * so the path is unreachable here and nothing is persisted. See docs.md.
+   */
+  public burnFromSelf(coin: QualifiedShieldedCoinInfo, amount: bigint) {
+    const res = this.contract.impureCircuits.burnFromSelf(
+      this.circuitContext,
+      coin,
+      amount
+    );
+    return this.commit(res);
   }
 
   public tokenColor(): Uint8Array {
-    const res = this.contract.impureCircuits.tokenColor(this.circuitContext);
-    this.circuitContext = res.context;
-    return res.result;
+    return this.commit(
+      this.contract.impureCircuits.tokenColor(this.circuitContext)
+    );
   }
 
   public name(): string {
-    return this.contract.impureCircuits.name(this.circuitContext).result;
+    return this.commit(this.contract.impureCircuits.name(this.circuitContext));
   }
 
   public symbol(): string {
-    return this.contract.impureCircuits.symbol(this.circuitContext).result;
+    return this.commit(
+      this.contract.impureCircuits.symbol(this.circuitContext)
+    );
   }
 
   public decimals(): bigint {
-    return this.contract.impureCircuits.decimals(this.circuitContext).result;
+    return this.commit(
+      this.contract.impureCircuits.decimals(this.circuitContext)
+    );
   }
 
+  public owner(): Account {
+    return this.commit(this.contract.impureCircuits.owner(this.circuitContext));
+  }
+
+  /** Owner-only, enforced inside the OpenZeppelin module rather than the host. */
   public transferOwnership(newOwner: Account): Ledger {
-    const res = this.contract.impureCircuits.transferOwnership(
-      this.circuitContext,
-      newOwner
+    this.commit(
+      this.contract.impureCircuits.transferOwnership(
+        this.circuitContext,
+        newOwner
+      )
     );
-    this.circuitContext = res.context;
+    return this.getLedger();
+  }
+
+  /** Owner-only, enforced in the module. Permanently disables minting. */
+  public renounceOwnership(): Ledger {
+    this.commit(
+      this.contract.impureCircuits.renounceOwnership(this.circuitContext)
+    );
     return this.getLedger();
   }
 
   /**
    * Promotes a freshly minted coin to a spendable "qualified" coin. In a real
    * transaction `mt_index` comes from the ledger's coin commitment tree; here
-   * we set it directly, exactly as `shielded-token-contract` does.
+   * it is set directly, exactly as `shielded-token-contract` does.
    */
   static qualify(
     coin: ShieldedCoinInfo,

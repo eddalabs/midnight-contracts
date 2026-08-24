@@ -20,8 +20,9 @@ export const zeroBytes = new Uint8Array(32);
  *
  *   persistentHash<Vector<1, Bytes<32>>>([secretKey])
  *
- * Both `Ownable` and `FungibleToken` identify a caller by this hash, so a test
- * that wants to act as someone must know the secret key behind their id.
+ * `Ownable` identifies the owner by this hash, so a test that wants to act as
+ * them must know the secret key behind their id. (This contract's token module
+ * needs no such identity: coins live in wallets, not in a balance map.)
  */
 export const computeAccountId = (secretKey: Uint8Array): Uint8Array =>
   persistentHash(new CompactTypeVector(1, new CompactTypeBytes(32)), [
@@ -33,13 +34,6 @@ export const asAccount = (accountId: Uint8Array) => ({
   is_left: true,
   left: accountId,
   right: { bytes: zeroBytes }
-});
-
-/** An `Either<Bytes<32>, ContractAddress>` holding a contract address. */
-export const asContract = (address: Uint8Array) => ({
-  is_left: false,
-  left: zeroBytes,
-  right: { bytes: address }
 });
 
 /** A deterministic 32-byte secret key derived from a label, for readable tests. */

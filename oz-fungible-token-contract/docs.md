@@ -27,9 +27,15 @@ _balances: { alice:  600, bob: 400 }
 
 Three roles are layered on top:
 
-- **Anyone** can `transfer`, `approve`, and `transferFrom` their own balance.
-- **Only the owner** can `mint` new supply, `burn` it, and `pause` the contract.
-- **While paused**, all value movement stops. Minting still works.
+- **Anyone** can `transfer` their own balance, `approve` a spender, or use
+  `transferFrom` to move a balance someone else has approved them to spend.
+- **Only the owner** can `mint`, `burn`, and `pause` the contract.
+- **While paused**, ordinary transfers stop. Minting and burning still work.
+
+Read that second line carefully, because it is stronger than it looks. `burn`
+takes an arbitrary account: the owner can destroy **any holder's** balance
+without their consent. That is inherited from the module, which checks only that
+the target has the funds, and §4 comes back to it.
 
 The important thing to notice early: *nothing here is a coin*. No asset moves
 on Midnight's ledger. `_balances` is an ordinary `Map` living in this contract's
@@ -49,7 +55,7 @@ npm install
 # from this workspace
 cd oz-fungible-token-contract
 npm run compact      # compile fungible-token.compact into src/managed/
-npm test             # 11 tests against the in-memory simulator
+npm test             # 21 tests against the in-memory simulator
 ```
 
 No node, wallet, or proof server needed, same as every other contract here.
@@ -80,10 +86,11 @@ module Pausable {
 }
 ```
 
-A module is **not a contract**. It has no constructor, it cannot be deployed,
-and it cannot even be compiled on its own. It is a bundle of ledger fields and
-circuits waiting to be merged into a host. You merge it by importing it with a
-prefix:
+A module is **not a contract**. It has no constructor and nothing to deploy:
+point the compiler at `Pausable.compact` alone and it succeeds, but what comes
+out is empty — `Ledger = {}`, `Circuits = {}`, not even a `zkir/` directory. The
+ledger field and the circuits only become real once a host takes them on. You
+merge it by importing it with a prefix:
 
 ```compact
 import "./modules/security/Pausable" prefix Pausable_;
@@ -108,13 +115,14 @@ after compiling:
 ```ts
 export type Ledger = {
   FungibleToken__balances: { ... };
-  FungibleToken__totalSupply: bigint;
-  Ownable__owner: { is_left: boolean; left: Uint8Array; ... };
-  Pausable__isPaused: boolean;
+  FungibleToken__allowances: { ... };
+  readonly FungibleToken__totalSupply: bigint;
+  readonly Ownable__owner: { is_left: boolean; left: Uint8Array; ... };
+  readonly Pausable__isPaused: boolean;
 }
 ```
 
-One flat ledger, contributed by three modules.
+One flat ledger, five fields, contributed by three modules.
 
 ### Mechanism, not policy
 
@@ -127,15 +135,18 @@ assertions around it) and leaves the **policy** (who is allowed to flip it) to
 you. The leading underscore is their marker for "unguarded, you must protect
 this."
 
-Their own documentation for the token modules says so outright:
+Their own documentation says so outright. This is from `NativeShieldedToken`,
+the module behind the [sibling contract](../oz-native-shielded-token-contract/docs.md),
+which states the shared convention most directly:
 
 > It does NOT include access control: consuming contracts compose that via the
 > module/contract pattern (Ownable, AccessControl, etc.) and SHOULD gate the
-> mint and burn circuits.
+> mint and burn circuits, which are unrestricted at the module level.
 
-So an access-control module is not decoration around a token. It is a
-prerequisite for using one safely. If you take one idea from this contract,
-take that one.
+`FungibleToken` carries no such sentence, but behaves identically: its `_mint`
+and `_burn` are equally unguarded. So an access-control module is not decoration
+around a token. It is a prerequisite for using one safely. If you take one idea
+from this contract, take that one.
 
 ---
 
@@ -224,9 +235,31 @@ export circuit pause(): [] {
 ```
 
 Only circuits that call `assertNotPaused` are affected by pausing. It is applied
-here to `transfer`, `transferFrom` and `approve`, but deliberately not to
-`mint`. There is a test pinning that decision down, because it is a choice, not
-a default.
+here to `transfer`, `transferFrom` and `approve`, and deliberately not to the two
+owner-only supply circuits, `mint` and `burn`. Tests pin both exemptions down,
+because they are choices rather than defaults.
+
+Why exempt them? Pausing could not protect against a hostile owner anyway, since
+`unpause` is itself owner-only and they would simply lift it first. The pause
+switch guards *user-initiated* value movement; owner-only supply control sits
+outside it.
+
+Which brings up the thing to notice about `burn`:
+
+```compact
+export circuit burn(account, value): [] {
+  Ownable_assertOnlyOwner();
+  FungibleToken__burn(account, value);
+}
+```
+
+`account` is arbitrary. Inside the module, the only check on the way out is
+`assert(fromBal >= value, "FungibleToken: insufficient balance")`. There is no
+check that the caller owns that balance. **The owner can zero out any holder at
+will**, and so can anyone who steals the owner key. That may be exactly what you
+want (a regulated asset with clawback) or completely unacceptable (a token users
+are asked to trust). Either way it is a decision to make deliberately, not
+inherit by accident. A test pins it so nobody discovers it in production.
 
 ### Two details inherited from the module
 
@@ -278,7 +311,9 @@ export circuit assertOnlyOwner(): [] {
 }
 ```
 
-and `_computeAccountId()` is just a hash of a secret you supply:
+That `_computeAccountId()` is `Ownable`'s own private helper, which calls the
+witness and hands the secret to a shared utility. The hashing itself lives one
+module over, in `Utils.compact`, and is just:
 
 ```compact
 export pure circuit computeAccountId(secretKey: Bytes<32>): Bytes<32> {
@@ -300,9 +335,19 @@ pure circuit compute_author_commitment(sk: Bytes<32>): Bytes<32> {
 }
 ```
 
-Same technique, one written by hand for one contract, the other packaged and
-packaged for reuse. Seeing your own pattern show up in a library is a good sign
-you understood it.
+Same idea, arrived at twice: hash a secret, store the hash, prove the preimage.
+Seeing your own pattern show up in a library is a good sign you understood it.
+
+But look at what differs, because it matters more than it appears. The bulletin
+board hashes a `Vector<2>` with a domain tag (`"bboard:author:"`); OZ hashes a
+bare `Vector<1>`. That is not a stylistic choice, and `Ownable`'s own comments
+call it out: because the account id is `H(secretKey)` with no per-deployment
+salt or domain separator, **the same secret key produces the same identity in
+every contract that uses this module**, and that is intentional. One identity,
+reusable everywhere — convenient, and linkable across contracts by anyone
+watching. The hand-rolled bulletin-board version, by adding a domain tag, is
+actually the more private of the two. If you want an owner who cannot be
+correlated across deployments, `ZOwnablePK` is the module that provides it.
 
 ### Balance-Map versus native coin
 
@@ -331,7 +376,8 @@ never committed. Three things inside matter:
 - **`contract/index.d.ts`** — the `Ledger` type shown in §3, plus a typed method
   per circuit and, importantly, the `Witnesses` type telling you exactly what
   private state you owe the contract.
-- **`zkir/`** — one file per circuit, 17 of them here: `mint`, `burn`,
+- **`zkir/`** — the circuit IR, 17 circuits here (a full `npm run compact` writes
+  a `.zkir` and a `.bzkir` for each): `mint`, `burn`,
   `transfer`, `transferFrom`, `approve`, `pause`, `unpause`,
   `transferOwnership`, `renounceOwnership`, and the read-only getters.
 - **`compiler/contract-info.json`** — metadata.
@@ -374,9 +420,11 @@ witnesses.
 **Witnesses are security-critical.** A witness runs off-chain, in the caller's
 wallet, and the contract has no way to check that it behaves. Whoever supplies a
 secret key is *claiming* an identity, and the circuit only verifies that the
-hash matches. OpenZeppelin is emphatic about this and ships their own witnesses
-marked test-only and unaudited, precisely so nobody treats them as a product.
-Ours are written fresh for this workspace and carry the same warning.
+hash matches. OpenZeppelin is emphatic about this: they ship their own witnesses
+stamped "TEST-ONLY WITNESS. NOT FOR PRODUCTION USE", precisely so nobody treats
+them as a product. The ones in this workspace were written for it rather than
+copied, and they are teaching material under the same terms: read them, do not
+ship them.
 
 ---
 
@@ -403,23 +451,42 @@ export const computeAccountId = (secretKey: Uint8Array): Uint8Array =>
   persistentHash(new CompactTypeVector(1, new CompactTypeBytes(32)), [secretKey]);
 ```
 
-The 11 tests pin down behaviour that would otherwise be assumption:
+The 21 tests pin down behaviour that would otherwise be assumption:
 
 | Test | What it protects |
 |---|---|
+| deployment records owner, unpaused, empty | the starting state |
 | owner mints, supply moves | the happy path |
 | **non-owner mint reverts** | the `assertOnlyOwner` guard is actually wired up |
 | contract-address recipient reverts | the C2C safety guard |
 | transfer moves balances | the core mechanic |
 | **transfer leaves total supply unchanged** | value is moved, never created |
-| over-balance transfer reverts | the module's own check |
+| over-balance transfer reverts | matched on `insufficient balance`, see below |
 | paused blocks transfer, unpause restores | the stop actually stops things |
 | non-owner pause reverts | the pause guard |
-| **mint still works while paused** | the deliberate choice to exempt minting |
+| **mint still works while paused** | a deliberate choice to exempt supply control |
+| burn destroys supply and balance | the mechanic |
+| **burn takes a balance the owner does not hold** | the confiscation power, pinned so it cannot surprise anyone |
+| non-owner burn reverts | the guard |
+| **burn still works while paused** | the second deliberate exemption |
+| approve then transferFrom | allowances move someone else's balance |
+| over-allowance transferFrom reverts | matched on `insufficient allowance` |
+| paused blocks approve and transferFrom | the pause covers all three movement circuits |
+| **non-owner transferOwnership / renounceOwnership revert** | the only guards this contract does not apply itself |
+| renouncing bricks minting | permanent and irreversible, so worth knowing |
 | ownership transfer moves the powers | and revokes the old owner |
 
-The bolded ones are the interesting ones: they encode decisions rather than
-mechanics, and they would silently break if someone rearranged the guards.
+The bolded ones encode decisions rather than mechanics, and would silently break
+if someone rearranged the guards.
+
+One test is worth explaining, because its first version was weak. "Over-balance
+transfer reverts" now matches on the message `insufficient balance` rather than
+using a bare `toThrow()`. The reason: the line immediately after the module's
+`assert(fromBal >= value, ...)` computes `fromBal - value as Uint<128>`, which
+underflows and panics by itself. A bare `toThrow()` therefore stayed green even
+with that assert deleted — it was testing the underflow, not the check it named.
+A reverting test that does not match its message is often testing less than it
+appears to.
 
 ---
 
@@ -428,20 +495,29 @@ mechanics, and they would silently break if someone rearranged the guards.
 Recompile (`npm run compact-fast`) and re-test after each.
 
 1. **Break it on purpose.** Delete `Ownable_assertOnlyOwner()` from `mint`.
-   Which test fails? Notice how many still pass, and sit with that for a
-   moment: the contract is now catastrophically broken and most of the suite is
-   still green.
-2. **Move a guard.** Add `Pausable_assertNotPaused()` to `mint`. Which existing
-   test fails, and do you agree with the choice it was defending?
+   **Two** tests fail: `rejects a non-owner`, and the final assertion of the
+   ownership-transfer test, which checks the *old* owner can no longer mint.
+   Nineteen still pass. Sit with that for a moment: the contract is now
+   catastrophically broken and most of the suite is still green.
+2. **Move a guard.** Add `Pausable_assertNotPaused()` to `mint`. The
+   "mint still works while paused" test fails. Do you agree with the choice it
+   was defending? The reasoning is in §4.
 3. **Read the ledger yourself.** Log `getLedger().FungibleToken__balances` after
    a mint. It is a `Map` with `lookup` and `member`, not a plain object.
-4. **Follow the prefix.** Rename the import prefix from `FungibleToken_` to
-   `Tok_`. Everything still works if you rename consistently. What does that
-   tell you about how much of "the module" is really just a naming convention?
+4. **Follow the prefix.** Rename the import prefix `FungibleToken_` to `Tok_`.
+   Rename it consistently in the contract and everything compiles — but the
+   tests go red, because the generated ledger keys become `Tok__totalSupply` and
+   the assertions still say `FungibleToken__totalSupply`. Fixing those too is
+   the point: the prefix is not decoration, it reaches all the way into the
+   TypeScript your tests read.
 5. **Add a cap.** Give the contract a `maxSupply` and assert against it in
    `mint`. You are now writing policy of your own, which is exactly what the
    library expects you to do.
-6. **Compare the paradigms.** Read
+6. **Decide about `burn`.** Restrict it so the owner can only burn their own
+   balance, and watch the confiscation test fail. Whether that is a fix or a
+   regression depends entirely on what you are building, which is why the
+   behaviour is tested rather than assumed.
+7. **Compare the paradigms.** Read
    [`oz-native-shielded-token-contract/docs.md`](../oz-native-shielded-token-contract/docs.md)
    and write down, in your own words, where a balance lives in each.
 

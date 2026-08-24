@@ -9,7 +9,7 @@ this workspace compiles with no extra dependency.
 | Upstream | https://github.com/OpenZeppelin/compact-contracts |
 | Pinned version | `v0.3.0-alpha.2` |
 | Upstream path | `contracts/src/<group>/<Module>.compact` |
-| Licence | MIT (headers left intact in every file) |
+| Licence | MIT — full notice in [LICENSE-MIT](LICENSE-MIT), SPDX headers intact in every file |
 | Targets | Compact compiler `0.31.0`, `pragma language_version >= 0.23.0` |
 | Audit status | **not this version.** See below. |
 

@@ -38,8 +38,13 @@ export class TokenSimulator {
   constructor(privateState: TokenPrivateState) {
     this.contract = new Contract<TokenPrivateState>(witnesses);
     this.contractAddress = sampleContractAddress();
-    const { currentPrivateState, currentContractState, currentZswapLocalState } =
-      this.contract.initialState(createConstructorContext(privateState, deployer));
+    const {
+      currentPrivateState,
+      currentContractState,
+      currentZswapLocalState
+    } = this.contract.initialState(
+      createConstructorContext(privateState, deployer)
+    );
     this.circuitContext = {
       currentPrivateState,
       currentZswapLocalState,
@@ -61,32 +66,49 @@ export class TokenSimulator {
 
   // Mint the contract's custom token to itself; returns the token color.
   mintAndReceive(amount: bigint): Uint8Array {
-    const res = this.contract.impureCircuits.mintAndReceive(this.circuitContext, amount);
+    const res = this.contract.impureCircuits.mintAndReceive(
+      this.circuitContext,
+      amount
+    );
     this.circuitContext = res.context;
     logger.info({ section: "mintAndReceive", gasCost: res.gasCost });
     return res.result;
   }
 
   sendToUser(amount: bigint, userAddr: UserAddress): void {
-    const res = this.contract.impureCircuits.sendToUser(this.circuitContext, amount, userAddr);
+    const res = this.contract.impureCircuits.sendToUser(
+      this.circuitContext,
+      amount,
+      userAddr
+    );
     this.circuitContext = res.context;
     logger.info({ section: "sendToUser", gasCost: res.gasCost });
   }
 
   receiveTokens(amount: bigint): void {
-    const res = this.contract.impureCircuits.receiveTokens(this.circuitContext, amount);
+    const res = this.contract.impureCircuits.receiveTokens(
+      this.circuitContext,
+      amount
+    );
     this.circuitContext = res.context;
     logger.info({ section: "receiveTokens", gasCost: res.gasCost });
   }
 
   receiveNightTokens(amount: bigint): void {
-    const res = this.contract.impureCircuits.receiveNightTokens(this.circuitContext, amount);
+    const res = this.contract.impureCircuits.receiveNightTokens(
+      this.circuitContext,
+      amount
+    );
     this.circuitContext = res.context;
     logger.info({ section: "receiveNightTokens", gasCost: res.gasCost });
   }
 
   sendNightTokensToUser(amount: bigint, userAddr: UserAddress): void {
-    const res = this.contract.impureCircuits.sendNightTokensToUser(this.circuitContext, amount, userAddr);
+    const res = this.contract.impureCircuits.sendNightTokensToUser(
+      this.circuitContext,
+      amount,
+      userAddr
+    );
     this.circuitContext = res.context;
     logger.info({ section: "sendNightTokensToUser", gasCost: res.gasCost });
   }

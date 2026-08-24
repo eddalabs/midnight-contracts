@@ -39,8 +39,13 @@ export class ShieldedTokenSimulator {
   constructor(privateState: ShieldedTokenPrivateState) {
     this.contract = new Contract<ShieldedTokenPrivateState>(witnesses);
     this.contractAddress = sampleContractAddress();
-    const { currentPrivateState, currentContractState, currentZswapLocalState } =
-      this.contract.initialState(createConstructorContext(privateState, deployer));
+    const {
+      currentPrivateState,
+      currentContractState,
+      currentZswapLocalState
+    } = this.contract.initialState(
+      createConstructorContext(privateState, deployer)
+    );
     this.circuitContext = {
       currentPrivateState,
       currentZswapLocalState,
