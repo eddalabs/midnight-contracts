@@ -1,0 +1,28 @@
+{
+  "name": "@eddalabs/oz-fungible-token-contract",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {},
+  "scripts": {
+    "compact": "compact compile +0.31.0 src/fungible-token.compact src/managed/fungible-token",
+    "compact-fast": "compact compile --skip-zk +0.31.0 src/fungible-token.compact src/managed/fungible-token",
+    "test": "vitest run",
+    "test:compile": "npm run compact && vitest run",
+    "build": "rm -rf dist && tsc --project tsconfig.build.json && cp -Rf ./src/managed ./dist/managed && cp -Rf ./src/modules ./dist/modules && cp ./src/fungible-token.compact ./dist",
+    "lint": "eslint src",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}

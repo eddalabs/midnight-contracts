@@ -58,7 +58,7 @@ export class CounterSimulator {
       costModel: CostModel.initialCostModel()
     };
     this.userPrivateStates = { ["p1"]: currentPrivateState };
-    this.updateUserPrivateState = (newPrivateState: CounterPrivateState) => {};
+    this.updateUserPrivateState = () => {};
   }
 
   static deployContract(secretKey: number): CounterSimulator {
@@ -74,7 +74,7 @@ export class CounterSimulator {
   ): CircuitContext<CounterPrivateState> {
     return {
       ...this.circuitContext,
-      currentPrivateState,
+      currentPrivateState
     };
   }
 
@@ -124,7 +124,7 @@ export class CounterSimulator {
       currentZswapLocalState: sender
         ? emptyZswapLocalState(sender)
         : this.circuitContext.currentZswapLocalState
-    }); 
+    });
 
     logger.info("INCREMET CIRCUIT");
     logger.info({

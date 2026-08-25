@@ -1,0 +1,130 @@
+pragma language_version >= 0.23;
+
+import CompactStandardLibrary;
+
+// OpenZeppelin ships MECHANISM and leaves POLICY to us. Every `_`-prefixed
+// circuit below (`FungibleToken__mint`, `Pausable__pause`) is deliberately
+// UNGATED upstream. Guarding them is this contract's job.
+import "./modules/token/FungibleToken" prefix FungibleToken_;
+import "./modules/access/Ownable" prefix Ownable_;
+import "./modules/security/Pausable" prefix Pausable_;
+
+// Ledger state contributed by the modules, re-exported so the generated
+// TypeScript `Ledger` type exposes it to the simulator and tests.
+export { FungibleToken__balances, FungibleToken__allowances, FungibleToken__totalSupply };
+export { Ownable__owner };
+export { Pausable__isPaused };
+
+constructor(
+  name_: Opaque<"string">,
+  symbol_: Opaque<"string">,
+  decimals_: Uint<8>,
+  initialOwner: Either<Bytes<32>, ContractAddress>
+) {
+  Ownable_initialize(initialOwner);
+  FungibleToken_initialize(name_, symbol_, decimals_);
+}
+
+/** Read-only metadata and balances: safe to expose directly. */
+
+export circuit name(): Opaque<"string"> {
+  return FungibleToken_name();
+}
+
+export circuit symbol(): Opaque<"string"> {
+  return FungibleToken_symbol();
+}
+
+export circuit decimals(): Uint<8> {
+  return FungibleToken_decimals();
+}
+
+export circuit totalSupply(): Uint<128> {
+  return FungibleToken_totalSupply();
+}
+
+export circuit balanceOf(account: Either<Bytes<32>, ContractAddress>): Uint<128> {
+  return FungibleToken_balanceOf(account);
+}
+
+export circuit allowance(
+  owner_: Either<Bytes<32>, ContractAddress>,
+  spender: Either<Bytes<32>, ContractAddress>
+): Uint<128> {
+  return FungibleToken_allowance(owner_, spender);
+}
+
+export circuit isPaused(): Boolean {
+  return Pausable_isPaused();
+}
+
+export circuit owner(): Either<Bytes<32>, ContractAddress> {
+  return Ownable_owner();
+}
+
+/** Value movement: gated by the pause switch. */
+
+export circuit transfer(
+  to: Either<Bytes<32>, ContractAddress>,
+  value: Uint<128>
+): Boolean {
+  Pausable_assertNotPaused();
+  return FungibleToken_transfer(to, value);
+}
+
+export circuit transferFrom(
+  fromAddress: Either<Bytes<32>, ContractAddress>,
+  to: Either<Bytes<32>, ContractAddress>,
+  value: Uint<128>
+): Boolean {
+  Pausable_assertNotPaused();
+  return FungibleToken_transferFrom(fromAddress, to, value);
+}
+
+export circuit approve(
+  spender: Either<Bytes<32>, ContractAddress>,
+  value: Uint<128>
+): Boolean {
+  Pausable_assertNotPaused();
+  return FungibleToken_approve(spender, value);
+}
+
+/** Supply control: owner only. `FungibleToken__mint` has no guard of its own. */
+
+export circuit mint(
+  account: Either<Bytes<32>, ContractAddress>,
+  value: Uint<128>
+): [] {
+  Ownable_assertOnlyOwner();
+  FungibleToken__mint(account, value);
+}
+
+export circuit burn(
+  account: Either<Bytes<32>, ContractAddress>,
+  value: Uint<128>
+): [] {
+  Ownable_assertOnlyOwner();
+  FungibleToken__burn(account, value);
+}
+
+/** Emergency stop: owner only. `Pausable__pause` has no guard of its own. */
+
+export circuit pause(): [] {
+  Ownable_assertOnlyOwner();
+  Pausable__pause();
+}
+
+export circuit unpause(): [] {
+  Ownable_assertOnlyOwner();
+  Pausable__unpause();
+}
+
+/** Ownership administration. */
+
+export circuit transferOwnership(newOwner: Either<Bytes<32>, ContractAddress>): [] {
+  Ownable_transferOwnership(newOwner);
+}
+
+export circuit renounceOwnership(): [] {
+  Ownable_renounceOwnership();
+}

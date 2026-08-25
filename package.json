@@ -7,12 +7,16 @@
     "counter-contract",
     "bulletin-board-contract",
     "unshielded-token-contract",
-    "shielded-token-contract"
+    "shielded-token-contract",
+    "oz-fungible-token-contract",
+    "oz-native-shielded-token-contract"
   ],
   "scripts": {
     "compact": "turbo run compact",
-    "build": "turbo run build",        
-    "lint": "turbo run lint"     
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck"
   },
   "engines": {
     "node": ">=18"
@@ -28,6 +32,7 @@
     "eslint": "^9.28.0",
     "eslint-config-prettier": "^10.1.5",
     "eslint-plugin-prettier": "^5.4.1",
+    "globals": "^15.15.0",
     "testcontainers": "^11.0.0",
     "ts-node": "^10.9.2",
     "turbo": "^2.4.4",
@@ -35,7 +40,7 @@
     "vitest": "^3.2.0"
   },
   "dependencies": {
-    "@midnight-ntwrk/compact-runtime": "0.16.0", 
+    "@midnight-ntwrk/compact-runtime": "0.16.0",
     "@scure/bip39": "^2.0.1",
     "dotenv": "^17.2.3",
     "pino": "9.7.0",

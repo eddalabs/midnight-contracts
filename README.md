@@ -15,7 +15,7 @@ example (contract + React + wallet), see the separate starter template.
 
 ## Prerequisites
 
-- **Node.js** (v23+) & **npm** (v11+)
+- **Node.js** (v18+; v22 or newer recommended) & **npm**
 - **Compact** developer tools (the `compact` compiler; this repo pins toolchain `+0.31.0`)
 
 You do **not** need Docker, a node, a wallet, or a proof server to run the test
@@ -39,6 +39,8 @@ npm run build
 | **Bulletin Board** | [`bulletin-board-contract/`](bulletin-board-contract) | Witnesses and selective disclosure: mixing private state into a public contract. | [docs.md](bulletin-board-contract/docs.md) |
 | **Unshielded Token** | [`unshielded-token-contract/`](unshielded-token-contract) | Public tokens: mint, send, and receive an unshielded token plus native NIGHT. Ported verbatim from the official docs example. | [docs.md](unshielded-token-contract/docs.md) |
 | **Shielded Token** | [`shielded-token-contract/`](shielded-token-contract) | Privacy-preserving Zswap coins: mint, send, and receive shielded tokens (hidden value/owner). Ported verbatim from the official docs example. | [docs.md](shielded-token-contract/docs.md) |
+| **OZ Fungible Token** | [`oz-fungible-token-contract/`](oz-fungible-token-contract) | Composing OpenZeppelin modules: an ERC-20-shaped token where balances are a `Map` in contract state, with owner-only minting and a pause switch. | [docs.md](oz-fungible-token-contract/docs.md) |
+| **OZ Native Shielded Token** | [`oz-native-shielded-token-contract/`](oz-native-shielded-token-contract) | The same library, the other paradigm: minting real Zswap coins that live in wallets, not in a balance table. | [docs.md](oz-native-shielded-token-contract/docs.md) |
 
 Each workspace follows the same five-part pattern:
 
@@ -50,6 +52,21 @@ src/witnesses.ts            → private-state type + witness functions
 src/test/simulators/        → in-memory CircuitContext harness (phase-1)
 src/test/<name>.test.ts     → Vitest suite
 ```
+
+The two `oz-` contracts add one directory to that pattern:
+
+```
+src/modules/<group>/*.compact  → vendored OpenZeppelin modules (unmodified copies)
+```
+
+A **module** is not a contract: it has no constructor and nothing to deploy.
+It is a bundle of ledger fields and circuits merged into a host contract under a
+prefix. OpenZeppelin ships every `_`-prefixed circuit ungated on purpose,
+leaving access control to the contract that imports it, so those two workspaces
+are as much about composition as about tokens.
+
+The vendored modules under `src/modules/` are unmodified MIT-licensed copies
+pinned at `v0.3.0-alpha.2`; see each workspace's `src/modules/README.md`.
 
 Start with the **Counter** and its [walkthrough](counter-contract/docs.md). It
 is the smallest contract and the `docs.md` template every other guide follows.

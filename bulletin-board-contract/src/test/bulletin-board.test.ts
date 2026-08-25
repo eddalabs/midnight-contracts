@@ -26,7 +26,7 @@ describe("Bulletin Board smart contract", () => {
     logger.info({
       section: "Initial State",
       hasNote: ledger.hasNote,
-      note: ledger.note
+      note: ledger.note,
     });
   });
 
@@ -44,7 +44,7 @@ describe("Bulletin Board smart contract", () => {
       section: "After Post",
       hasNote: ledger.hasNote,
       note: ledger.note,
-      authorCommitment: ledger.authorCommitment
+      authorCommitment: ledger.authorCommitment,
     });
   });
 
@@ -86,7 +86,7 @@ describe("Bulletin Board smart contract", () => {
 
     logger.info({
       section: "After Takedown",
-      hasNote: ledger.hasNote
+      hasNote: ledger.hasNote,
     });
   });
 
@@ -110,7 +110,7 @@ describe("Bulletin Board smart contract", () => {
       section: "After User2 Post",
       hasNote: ledger.hasNote,
       note: ledger.note,
-      authorCommitment: ledger.authorCommitment
+      authorCommitment: ledger.authorCommitment,
     });
   });
 
@@ -154,7 +154,7 @@ describe("Bulletin Board smart contract", () => {
       section: "Privacy Test",
       user1Commitment: commitment1,
       user2Commitment: commitment3,
-      commitmentsMatch: commitment1 === commitment3
+      commitmentsMatch: commitment1 === commitment3,
     });
   });
 });

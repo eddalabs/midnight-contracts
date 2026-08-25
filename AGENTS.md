@@ -19,15 +19,17 @@ It is a Turbo monorepo of independent contract workspaces. Current contracts:
 - `bulletin-board-contract`: witnesses and selective disclosure.
 - `unshielded-token-contract`: unshielded token circuits (mint/send/receive + native NIGHT), ported verbatim from the official docs token-transfers example.
 - `shielded-token-contract`: shielded Zswap coins (mint/send/receive), ported verbatim from the same official token-transfers example.
+- `oz-fungible-token-contract`: composes vendored OpenZeppelin modules (FungibleToken + Ownable + Pausable) into an ERC-20-shaped token. Balance-Map paradigm.
+- `oz-native-shielded-token-contract`: composes NativeShieldedToken + Ownable to mint real Zswap coins. Native-coin paradigm.
 
-License: Apache-2.0.
+License: Apache-2.0 for this repo's own code. Vendored OpenZeppelin modules are MIT; see "Vendored modules" below.
 
-## The five-part workspace pattern
+## The workspace pattern
 
 Every contract workspace follows the same shape. New contracts should match it:
 
 ```
-src/<name>.compact          → the contract source (the only thing you hand-write here)
+src/<name>.compact          → the contract source
   ↓ compact compile
 src/managed/<name>/         → GENERATED: TS API, ZK keys, circuit IR (do not edit, do not commit)
 src/witnesses.ts            → private-state type + witness implementations
@@ -35,6 +37,43 @@ src/test/simulators/        → in-memory CircuitContext harness (phase-1, no in
 src/test/<name>.test.ts     → Vitest suite
 docs.md                     → beginner walkthrough (see template note below)
 ```
+
+Workspaces that build on a third-party library add one more directory:
+
+```
+src/modules/<group>/*.compact  → VENDORED third-party modules (do not edit — see below)
+```
+
+Only the two `oz-*` workspaces have it today. The layout inside `src/modules/`
+mirrors upstream (`access/`, `security/`, `token/`, `utils/`) because the modules
+import each other by relative path: `access/Ownable.compact` does
+`import "../utils/Utils"`, so those directories must stay siblings.
+
+## Vendored modules — do not edit
+
+`src/modules/**/*.compact` files are **unmodified copies** of third-party code,
+currently OpenZeppelin's Compact library pinned at `v0.3.0-alpha.2` (MIT).
+Each workspace's `src/modules/README.md` records the pin and the licence.
+
+- **Never edit a vendored file**, even to fix something that looks wrong. A local
+  edit silently forks from upstream and the "unmodified copies" claim in the
+  README becomes false. If a module is genuinely broken, note it in the host
+  contract or `docs.md` and work around it there.
+- **To update**, re-copy from the pinned tag and bump the version in that
+  workspace's `src/modules/README.md`.
+- Keep every `// SPDX-License-Identifier` and `// OpenZeppelin Compact Contracts`
+  header intact, and keep `LICENSE-MIT` alongside them.
+- Verify integrity by diffing against upstream rather than reading for
+  plausibility:
+  `gh api "repos/OpenZeppelin/compact-contracts/contents/contracts/src/<group>/<Name>.compact?ref=v0.3.0-alpha.2" --jq '.content' | base64 -d`
+
+**Mechanism versus policy.** OpenZeppelin modules ship every `_`-prefixed circuit
+with no access control on purpose (`FungibleToken__mint`, `Pausable__pause`).
+The host contract must add the guard. When reviewing or writing a host, check
+every exported circuit against the module's own doc comments for what consumers
+SHOULD gate. Note that non-underscore circuits like `Ownable_transferOwnership`
+guard themselves, so "every mutator is ungated" is wrong — it is specifically the
+underscore-prefixed ones.
 
 ## Build and test
 
@@ -54,7 +93,8 @@ the simulators run circuits in-memory using `@midnight-ntwrk/compact-runtime`.
 
 - **Compiler toolchain is `+0.31.0`.** That is the version pinned in each
   workspace's `compact` script. Do not assume older versions; verify with
-  `compact` against the available list. (Language pragmas in-tree are `>= 0.23`.)
+  `compact` against the available list. (Hand-written contracts use pragma
+  `>= 0.23`; vendored OpenZeppelin modules use `>= 0.23.0`. Both are fine.)
 - **Never commit `src/managed/`.** It is generated build output, gitignored via
   `**/managed/`. Readers regenerate it with `npm run compact`. Committing it
   invites staleness and toolchain mismatch.

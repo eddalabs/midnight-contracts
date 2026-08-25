@@ -6,7 +6,9 @@ export type ShieldedTokenPrivateState = {
   readonly _unused: number;
 };
 
-export const createPrivateState = (value: number): ShieldedTokenPrivateState => {
+export const createPrivateState = (
+  value: number
+): ShieldedTokenPrivateState => {
   return { _unused: value };
 };
 

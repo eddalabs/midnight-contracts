@@ -1,7 +1,6 @@
 import { CounterSimulator, logger } from "./simulators/simulator.js";
 import { describe, it, expect } from "vitest";
 import * as utils from "./utils/utils";
-import { CoinPublicKey } from "@midnight-ntwrk/compact-runtime";
 
 // Users private information
 const key1 = 0;
@@ -16,8 +15,6 @@ function createSimulator() {
   simulator.createPrivateState("p2", key2);
   return simulator;
 }
-
-let caller: CoinPublicKey;
 
 describe("Counter smart contract", () => {
   it("Display intial values", () => {
@@ -45,8 +42,8 @@ describe("Counter smart contract", () => {
       block: circuitContext.currentQueryContext.block,
       comIndices: circuitContext.currentQueryContext.comIndices,
       effects: circuitContext.currentQueryContext.effects
-    });      
-  }); 
+    });
+  });
 
   it("increments the counter correctly", () => {
     const simulator = createSimulator();
@@ -73,6 +70,6 @@ describe("Counter smart contract", () => {
       block: circuitContext.currentQueryContext.block,
       comIndices: circuitContext.currentQueryContext.comIndices,
       effects: circuitContext.currentQueryContext.effects
-    });     
+    });
   });
 });
