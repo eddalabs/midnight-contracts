@@ -43,9 +43,8 @@ return values.
 | `mintAndSendShielded(...)` | mint a coin and immediately send it, in one circuit |
 
 The interesting return type is `ShieldedSendResult`, which carries both the
-`sent` coin and the `change` coin. That is UTXO change-making (Rung 5, Part 1):
-you spend a whole coin and get the remainder back as a new coin, exactly like
-breaking a $20 bill.
+`sent` coin and the `change` coin. That is UTXO change-making: you spend a whole
+coin and get the remainder back as a new coin, exactly like breaking a $20 bill.
 
 ---
 
@@ -111,8 +110,13 @@ The shielded vocabulary, all from `CompactStandardLibrary`:
 **A shielded coin is data: `ShieldedCoinInfo { nonce, color, value }`.** A coin
 is not a row in some ledger balance. It is a value you hold: a `nonce` (makes it
 unique), a `color` (its token type), and a `value`. On-chain, only a commitment
-to this data sits in a Merkle tree, so the amount and owner stay hidden. This is
-Rung 5 Part 1 made concrete.
+to this data sits in a Merkle tree, so the amount and owner stay hidden.
+
+This is the opposite of the account model, where a token is a number in a table
+keyed by your address. Here there is no table and no address: a coin is an
+object you hold, and the chain sees only its commitment. For the account model
+side by side with this one, see
+[`oz-fungible-token-contract`](../oz-fungible-token-contract/docs.md).
 
 **`mintShieldedToken(domainSep, value, nonce, recipient)`** creates a coin of a
 given `value`. The token's `color` is derived from `domainSep` plus the minter,
@@ -287,9 +291,12 @@ Recompile (`npm run compact-fast`) and re-test after each change.
    confirm their colors differ. Then mint two with the same `domainSep` and
    different nonces and confirm the colors match. Which field is the token
    *type*, and which makes each coin *unique*?
-4. **Connect to Rung 4.** A shielded coin's on-chain footprint is a commitment,
-   and spending it posts a nullifier. Which bulletin-board mechanism is that the
-   same as, and why does the nullifier need to be unlinkable to its commitment?
+4. **Connect it to the bulletin board.** A shielded coin's on-chain footprint is
+   a commitment, and spending it posts a nullifier. Re-read
+   `compute_author_commitment` in
+   [`bulletin-board-contract`](../bulletin-board-contract/docs.md): which
+   mechanism there is this the same as, and why must a nullifier be unlinkable
+   to its commitment?
 
 ---
 
